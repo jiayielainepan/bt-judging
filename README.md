@@ -9,3 +9,9 @@ Built one feature at a time:
 3. Scoring: tap a team to score Category 1–5 (each out of 5)
 4. Feedback prompts (all optional): quick-tap "Keep doing" / "Work on" notes, plus "What worked" and "What to improve" boxes
 5. Gut check (required): Standout / Solid / Needs work, at the bottom of the scoring sheet; shown with the score on each team card
+6. Google Sheet connection: every Save is sent to a Google Sheet (one row per judge per team), with automatic retry if Wi-Fi drops
+
+## Google Sheet setup
+
+The script that receives scores is in `apps-script/Code.gs`. Paste it into the Sheet's Extensions > Apps Script,
+deploy it as a Web app (Execute as: Me, Who has access: Anyone), and put the Web app URL in `API_URL` in `index.html`.

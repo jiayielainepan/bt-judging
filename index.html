@@ -74,6 +74,9 @@
     .hello { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
     .hello h1 { margin: 0; }
     .sub { color: var(--muted); font-size: 14px; margin: 0 0 22px; }
+    .sync { font-size: 13px; margin: -12px 0 18px; color: var(--muted); }
+    .sync.ok { color: #18794e; }
+    .sync.warn { color: #b54708; }
     .list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .list-head h2 { font-size: 16px; margin: 0; }
     .plus {
@@ -180,6 +183,7 @@
         <button class="link" id="change-name">Not you?</button>
       </div>
 
+      <p class="sync" id="sync-status"></p>
       <div class="list-head">
         <h2 id="team-count">Teams</h2>
         <button class="plus" id="add-team-top" aria-label="Add a team" title="Add a team">+</button>
@@ -192,6 +196,11 @@
   <div id="sheet"></div>
 
   <script>
+    // ---------- Google Sheet connection ----------
+    // Paste the Apps Script Web app URL (ends in /exec) between the quotes.
+    // Leave it empty and scores are only saved on the judge's phone.
+    const API_URL = '';
+
     // ---------- Settings ----------
     const STARTING_TEAMS = 5;                 // how many teams to show at first
     const NAME_KEY  = 'bt-judge-name';
@@ -231,10 +240,94 @@
 
     let teamCount = parseInt(load(TEAMS_KEY), 10) || STARTING_TEAMS;
 
-    // Saved scores on this phone: { "3": { scores: {1: 4, 2: 5, ...}, comment: "..." } }
-    let allScores = {};
-    try { allScores = JSON.parse(load(SCORES_KEY)) || {}; } catch (e) { allScores = {}; }
-    function saveAllScores() { store(SCORES_KEY, JSON.stringify(allScores)); }
+    // Each judge on this phone gets a random ID, so their scores stay separate
+    // (in the Sheet too) even if two judges share a name or share a phone.
+    const DEVICE_KEY = 'bt-judge-id';
+    const QUEUE_KEY  = 'bt-send-queue';
+    let deviceId = null;
+    let allScores = {};     // this judge's scores: { "3": { tier, scores: {1: 4, ...}, notes, best, improve } }
+
+    function startJudge() {
+      deviceId = load(DEVICE_KEY);
+      if (!deviceId) {
+        deviceId = 'j-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+        store(DEVICE_KEY, deviceId);
+      }
+      try { allScores = JSON.parse(load(`${SCORES_KEY}-${deviceId}`)) || {}; } catch (e) { allScores = {}; }
+    }
+    function saveAllScores() { store(`${SCORES_KEY}-${deviceId}`, JSON.stringify(allScores)); }
+
+    // ---------- Sending scores to the Google Sheet ----------
+    // Every save goes into a queue on the phone first, then gets sent.
+    // If the Wi-Fi drops, it stays in the queue and retries automatically.
+    let queue = [];
+    try { queue = JSON.parse(load(QUEUE_KEY)) || []; } catch (e) { queue = []; }
+    let sending = false, lastError = false;
+
+    function saveQueue() { store(QUEUE_KEY, JSON.stringify(queue)); }
+
+    function buildPayload(teamNum, entry) {
+      const noteText = type => NOTES.filter(n => n.type === type && entry.notes.includes(n.id)).map(n => n.text).join('; ');
+      const scores = [];
+      for (let c = 1; c <= CATEGORIES; c++) scores.push(entry.scores[c]);
+      return {
+        judge: load(NAME_KEY) || '',
+        team: `Team ${teamNum}`,
+        gut: entry.tier ? tierOf(entry.tier).label : '',
+        scores: scores,
+        total: totalOf(entry),
+        keep: noteText('keep'),
+        work: noteText('work'),
+        best: entry.best || '',
+        improve: entry.improve || '',
+        device: deviceId
+      };
+    }
+
+    function queueScore(teamNum, entry) {
+      if (!API_URL) return;
+      const payload = buildPayload(teamNum, entry);
+      // If an older version of this same score is still waiting, replace it
+      queue = queue.filter(q => !(q.device === payload.device && q.team === payload.team));
+      queue.push(payload);
+      saveQueue();
+      sendQueue();
+    }
+
+    async function sendQueue() {
+      if (!API_URL || sending) return;
+      sending = true;
+      showSyncStatus();
+      while (queue.length) {
+        try {
+          const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(queue[0]) });
+          const out = await res.json();
+          if (!out.ok) throw new Error(out.error || 'Not saved');
+          queue.shift();
+          saveQueue();
+          lastError = false;
+        } catch (err) {
+          lastError = true;
+          break;   // try again later
+        }
+      }
+      sending = false;
+      showSyncStatus();
+    }
+
+    function showSyncStatus() {
+      const el = $('sync-status');
+      if (!el) return;
+      if (!API_URL) { el.className = 'sync'; el.textContent = 'Not connected to the Google Sheet yet. Scores stay on this phone.'; return; }
+      const mine = queue.filter(q => q.device === deviceId).length;
+      if (sending && mine) { el.className = 'sync'; el.textContent = 'Sending scores…'; }
+      else if (mine) { el.className = 'sync warn'; el.textContent = `⚠ ${mine} score${mine > 1 ? 's' : ''} not sent yet. Will retry automatically.`; }
+      else if (Object.keys(allScores).length) { el.className = 'sync ok'; el.textContent = '✓ All your scores are saved'; }
+      else { el.className = 'sync'; el.textContent = ''; }
+    }
+
+    setInterval(sendQueue, 10000);                 // retry every 10 seconds
+    window.addEventListener('online', sendQueue);  // and as soon as Wi-Fi comes back
 
     function totalOf(entry) {
       return Object.values(entry.scores).reduce((sum, v) => sum + v, 0);
@@ -262,6 +355,7 @@
       nameScreen.classList.add('hidden');
       homeScreen.classList.remove('hidden');
       renderTeams();
+      showSyncStatus();
     }
 
     function renderTeams() {
@@ -397,6 +491,7 @@
         improve: draft.improve.trim()
       };
       saveAllScores();
+      queueScore(draft.team, allScores[draft.team]);
       draft = null;
       renderSheet();
       renderTeams();
@@ -425,10 +520,17 @@
       const name = nameInput.value.trim();
       if (name.length < 2) return;
       store(NAME_KEY, name);
+      startJudge();
       showHome(name);
     });
 
-    $('change-name').addEventListener('click', () => { forget(NAME_KEY); showNameScreen(); });
+    $('change-name').addEventListener('click', () => {
+      // A different person on this phone gets a fresh judge ID and their own score list.
+      // The previous judge's scores are already in the Sheet (or still in the send queue).
+      forget(NAME_KEY);
+      forget(DEVICE_KEY);
+      showNameScreen();
+    });
     $('add-team-top').addEventListener('click', addTeam);
     $('add-team-bottom').addEventListener('click', addTeam);
 
@@ -439,7 +541,7 @@
       const note = e.target.closest('[data-note]');
       const tierBtn = e.target.closest('[data-tier]');
       if (tierBtn && draft) {
-        draft.tier = draft.tier === tierBtn.dataset.tier ? null : tierBtn.dataset.tier;
+        draft.tier = tierBtn.dataset.tier;
         renderSheet();
         return;
       }
@@ -461,7 +563,7 @@
 
     // ---------- Start ----------
     const saved = load(NAME_KEY);
-    if (saved) showHome(saved);
+    if (saved) { startJudge(); showHome(saved); sendQueue(); }
     else showNameScreen();
   </script>
 </body>
