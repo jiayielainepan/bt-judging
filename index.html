@@ -134,6 +134,15 @@
     .total { display: flex; justify-content: space-between; align-items: baseline; margin: 16px 2px 0; font-weight: 600; }
     .total b { font-size: 22px; }
     .status.done { background: #e3f4ea; color: #18794e; }
+    .group { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin: 12px 0 6px; }
+    .group.keep { color: #18794e; }
+    .group.work { color: #b54708; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { padding: 7px 12px; border-radius: 999px; font-size: 14px; border: 1px dashed #cfcac0; background: #fff; }
+    .chip.keep.on { background: #e3f4ea; border: 1px solid #18794e; color: #18794e; }
+    .chip.work.on { background: #fdeee3; border: 1px solid #b54708; color: #b54708; }
+    .field-label { font-size: 14px; font-weight: 600; margin-top: 14px; }
+    .field-label:first-of-type { margin-top: 4px; }
   </style>
 </head>
 <body>
@@ -177,6 +186,22 @@
     const SCORES_KEY = 'bt-scores-v1';
     const CATEGORIES = 5;                     // Category 1 through 5
     const MAX_POINTS = 5;                     // each category is out of 5
+
+    // Quick-tap notes: specific things a 1-5 score can't tell a team. All optional.
+    const NOTES = [
+      { id: 'demo',   type: 'keep', text: 'Strong live demo' },
+      { id: 'evid',   type: 'keep', text: 'Real customer evidence' },
+      { id: 'qa',     type: 'keep', text: 'Handled Q&A well' },
+      { id: 'story',  type: 'keep', text: 'Memorable story' },
+      { id: 'ask',    type: 'keep', text: 'Clear, specific ask' },
+      { id: 'team',   type: 'keep', text: 'Team fits the problem' },
+      { id: 'nevid',  type: 'work', text: 'Show customer evidence' },
+      { id: 'rev',    type: 'work', text: 'Explain how you make money' },
+      { id: 'comp',   type: 'work', text: 'Address competitors' },
+      { id: 'time',   type: 'work', text: 'Ran over time' },
+      { id: 'slides', type: 'work', text: 'Too much text on slides' },
+      { id: 'nask',   type: 'work', text: 'Make the ask specific' }
+    ];
 
     // ---------- Saved on this phone ----------
     function load(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
@@ -263,13 +288,17 @@
       draft = {
         team: n,
         scores: saved ? { ...saved.scores } : {},
-        comment: saved ? saved.comment : ''
+        notes: saved && saved.notes ? [...saved.notes] : [],
+        best: saved ? (saved.best || saved.comment || '') : '',
+        improve: saved ? (saved.improve || '') : ''
       };
       renderSheet();
     }
 
     function renderSheet() {
       if (!draft) { $('sheet').innerHTML = ''; return; }
+      const oldSheet = document.querySelector('.sheet');
+      const keepScroll = oldSheet ? oldSheet.scrollTop : 0;
       const scoredCount = Object.keys(draft.scores).length;
       const ready = scoredCount === CATEGORIES;
       const total = Object.values(draft.scores).reduce((a, b) => a + b, 0);
@@ -298,8 +327,18 @@
             </div>
             ${cats}
             <div class="cat">
-              <div class="cat-head">One sentence for the team <span>optional</span></div>
-              <textarea id="comment" maxlength="200" placeholder="e.g. Lead with the customer interview — it was your strongest evidence.">${escapeHtml(draft.comment)}</textarea>
+              <div class="cat-head">Feedback for the team <span>all optional</span></div>
+              <div class="group keep">Keep doing</div>
+              <div class="chips">${noteChips('keep')}</div>
+              <div class="group work">Work on</div>
+              <div class="chips">${noteChips('work')}</div>
+            </div>
+            <div class="cat">
+              <div class="cat-head">In your own words <span>optional</span></div>
+              <div class="field-label">What worked</div>
+              <textarea id="best" maxlength="250" placeholder="The best part of your presentation was…">${escapeHtml(draft.best)}</textarea>
+              <div class="field-label">What to improve</div>
+              <textarea id="improve" maxlength="250" placeholder="You could consider improving…">${escapeHtml(draft.improve)}</textarea>
             </div>
             <div class="total"><span>Total</span><b>${total} / ${CATEGORIES * MAX_POINTS}</b></div>
             <button class="primary" id="save-score" ${ready ? '' : 'disabled'}>
@@ -307,11 +346,26 @@
             </button>
           </div>
         </div>`;
+      const newSheet = document.querySelector('.sheet');
+      if (newSheet) newSheet.scrollTop = keepScroll;
+    }
+
+    function noteChips(type) {
+      return NOTES.filter(n => n.type === type).map(n => {
+        const on = draft.notes.includes(n.id) ? 'on' : '';
+        const sign = type === 'keep' ? '+' : '−';
+        return `<button class="chip ${type} ${on}" data-note="${n.id}">${sign} ${n.text}</button>`;
+      }).join('');
     }
 
     function saveScore() {
       if (!draft || Object.keys(draft.scores).length !== CATEGORIES) return;
-      allScores[draft.team] = { scores: draft.scores, comment: draft.comment.trim() };
+      allScores[draft.team] = {
+        scores: draft.scores,
+        notes: draft.notes,
+        best: draft.best.trim(),
+        improve: draft.improve.trim()
+      };
       saveAllScores();
       draft = null;
       renderSheet();
@@ -327,7 +381,9 @@
     // ---------- Events ----------
     // Keep the comment in the draft as they type
     document.addEventListener('input', (e) => {
-      if (e.target.id === 'comment' && draft) draft.comment = e.target.value;
+      if (!draft) return;
+      if (e.target.id === 'best') draft.best = e.target.value;
+      if (e.target.id === 'improve') draft.improve = e.target.value;
     });
 
     nameInput.addEventListener('input', () => {
@@ -350,6 +406,13 @@
       const team = e.target.closest('[data-team]');
       const remove = e.target.closest('[data-remove]');
       const point = e.target.closest('[data-cat]');
+      const note = e.target.closest('[data-note]');
+      if (note && draft) {
+        const id = note.dataset.note;
+        draft.notes = draft.notes.includes(id) ? draft.notes.filter(x => x !== id) : [...draft.notes, id];
+        renderSheet();
+        return;
+      }
       if (point && draft) {
         draft.scores[point.dataset.cat] = Number(point.dataset.val);
         renderSheet();
