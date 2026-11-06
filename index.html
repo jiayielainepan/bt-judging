@@ -115,8 +115,25 @@
       border-radius: 20px 20px 0 0; padding: 22px 20px 26px; text-align: center;
     }
     @media (min-width: 600px) { .sheet-bg { align-items: center; } .sheet { border-radius: 20px; } }
-    .sheet .num { margin: 0 auto 10px; width: 52px; height: 52px; font-size: 20px; }
-    .sheet h2 { margin: 0 0 6px; }
+    .sheet { text-align: left; max-height: 92vh; overflow-y: auto; }
+    .sheet-top { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .sheet-top h2 { margin: 0; flex: 1; font-size: 20px; }
+    .cancel { color: var(--muted); font-size: 14px; font-weight: 600; padding: 6px 0; }
+    .cat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; }
+    .cat-head { display: flex; justify-content: space-between; font-weight: 600; font-size: 15px; }
+    .cat-head span { color: var(--muted); font-weight: 500; font-size: 13px; }
+    .scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 10px; }
+    .scale button { padding: 11px 0; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-weight: 700; font-size: 16px; }
+    .scale button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+    textarea {
+      width: 100%; font: inherit; font-size: 16px; margin-top: 8px;
+      padding: 11px 13px; border: 1px solid var(--line); border-radius: 12px;
+      resize: vertical; min-height: 76px; background: #fff; color: var(--ink);
+    }
+    textarea:focus { outline: 3px solid var(--accent-soft); border-color: var(--accent); }
+    .total { display: flex; justify-content: space-between; align-items: baseline; margin: 16px 2px 0; font-weight: 600; }
+    .total b { font-size: 22px; }
+    .status.done { background: #e3f4ea; color: #18794e; }
   </style>
 </head>
 <body>
@@ -157,6 +174,9 @@
     const STARTING_TEAMS = 5;                 // how many teams to show at first
     const NAME_KEY  = 'bt-judge-name';
     const TEAMS_KEY = 'bt-team-count-v2';
+    const SCORES_KEY = 'bt-scores-v1';
+    const CATEGORIES = 5;                     // Category 1 through 5
+    const MAX_POINTS = 5;                     // each category is out of 5
 
     // ---------- Saved on this phone ----------
     function load(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
@@ -164,6 +184,18 @@
     function forget(key) { try { localStorage.removeItem(key); } catch (e) {} }
 
     let teamCount = parseInt(load(TEAMS_KEY), 10) || STARTING_TEAMS;
+
+    // Saved scores on this phone: { "3": { scores: {1: 4, 2: 5, ...}, comment: "..." } }
+    let allScores = {};
+    try { allScores = JSON.parse(load(SCORES_KEY)) || {}; } catch (e) { allScores = {}; }
+    function saveAllScores() { store(SCORES_KEY, JSON.stringify(allScores)); }
+
+    function totalOf(entry) {
+      return Object.values(entry.scores).reduce((sum, v) => sum + v, 0);
+    }
+
+    // The scoring sheet that's currently open (null when closed)
+    let draft = null;
 
     // ---------- Elements ----------
     const $ = (id) => document.getElementById(id);
@@ -186,23 +218,22 @@
       renderTeams();
     }
 
-    function ordinal(n) {
-      const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
-      return n + (s[(v - 20) % 10] || s[v] || s[0]);
-    }
-
     function renderTeams() {
       $('team-count').textContent = `Teams (${teamCount})`;
       let html = '';
       for (let i = 1; i <= teamCount; i++) {
         // Only the last team can be removed, so the numbering never has gaps.
-        const removable = i === teamCount && teamCount > 1;
+        const entry = allScores[i];
+        const removable = i === teamCount && teamCount > 1 && !entry;
+        const status = entry
+          ? `<span class="status done">${totalOf(entry)} / ${CATEGORIES * MAX_POINTS}</span>`
+          : `<span class="status">Not judged</span>`;
         html += `
           <div class="row-wrap" style="display:flex;align-items:center;gap:6px">
             <button class="team" data-team="${i}">
               <span class="num">${i}</span>
               <span class="info"><b>Team ${i}</b></span>
-              <span class="status">Not judged</span>
+              ${status}
             </button>
             ${removable ? `<button class="remove" data-remove="${i}" aria-label="Remove Team ${i}" title="Remove Team ${i}">×</button>` : (teamCount > 1 ? '<span style="width:32px;flex:none"></span>' : '')}
           </div>`;
@@ -226,21 +257,79 @@
       renderTeams();
     }
 
-    // Placeholder: scoring is the next feature.
+    // ---------- Scoring sheet ----------
     function openTeam(n) {
+      const saved = allScores[n];
+      draft = {
+        team: n,
+        scores: saved ? { ...saved.scores } : {},
+        comment: saved ? saved.comment : ''
+      };
+      renderSheet();
+    }
+
+    function renderSheet() {
+      if (!draft) { $('sheet').innerHTML = ''; return; }
+      const scoredCount = Object.keys(draft.scores).length;
+      const ready = scoredCount === CATEGORIES;
+      const total = Object.values(draft.scores).reduce((a, b) => a + b, 0);
+
+      let cats = '';
+      for (let c = 1; c <= CATEGORIES; c++) {
+        let buttons = '';
+        for (let v = 1; v <= MAX_POINTS; v++) {
+          const on = draft.scores[c] === v ? 'on' : '';
+          buttons += `<button class="${on}" data-cat="${c}" data-val="${v}" aria-label="Category ${c}: ${v} points">${v}</button>`;
+        }
+        cats += `
+          <div class="cat">
+            <div class="cat-head">Category ${c} <span>out of ${MAX_POINTS}</span></div>
+            <div class="scale">${buttons}</div>
+          </div>`;
+      }
+
       $('sheet').innerHTML = `
         <div class="sheet-bg" id="sheet-bg">
           <div class="sheet">
-            <div class="num">${n}</div>
-            <h2>Team ${n}</h2>
-            <p>Scoring for this team is the next feature we'll build.</p>
-            <button class="primary" id="close-sheet">Back to teams</button>
+            <div class="sheet-top">
+              <span class="num">${draft.team}</span>
+              <h2>Team ${draft.team}</h2>
+              <button class="cancel" id="close-sheet">Cancel</button>
+            </div>
+            ${cats}
+            <div class="cat">
+              <div class="cat-head">One sentence for the team <span>optional</span></div>
+              <textarea id="comment" maxlength="200" placeholder="e.g. Lead with the customer interview — it was your strongest evidence.">${escapeHtml(draft.comment)}</textarea>
+            </div>
+            <div class="total"><span>Total</span><b>${total} / ${CATEGORIES * MAX_POINTS}</b></div>
+            <button class="primary" id="save-score" ${ready ? '' : 'disabled'}>
+              ${ready ? 'Save' : `Score all ${CATEGORIES} categories to save (${scoredCount}/${CATEGORIES})`}
+            </button>
           </div>
         </div>`;
     }
-    function closeSheet() { $('sheet').innerHTML = ''; }
+
+    function saveScore() {
+      if (!draft || Object.keys(draft.scores).length !== CATEGORIES) return;
+      allScores[draft.team] = { scores: draft.scores, comment: draft.comment.trim() };
+      saveAllScores();
+      draft = null;
+      renderSheet();
+      renderTeams();
+    }
+
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+    }
+
+    function closeSheet() { draft = null; renderSheet(); }
 
     // ---------- Events ----------
+    // Keep the comment in the draft as they type
+    document.addEventListener('input', (e) => {
+      if (e.target.id === 'comment' && draft) draft.comment = e.target.value;
+    });
+
     nameInput.addEventListener('input', () => {
       continueBtn.disabled = nameInput.value.trim().length < 2;
     });
@@ -260,9 +349,15 @@
     document.addEventListener('click', (e) => {
       const team = e.target.closest('[data-team]');
       const remove = e.target.closest('[data-remove]');
-      if (remove) removeLastTeam();
+      const point = e.target.closest('[data-cat]');
+      if (point && draft) {
+        draft.scores[point.dataset.cat] = Number(point.dataset.val);
+        renderSheet();
+      }
+      else if (e.target.closest('#save-score')) saveScore();
+      else if (remove) removeLastTeam();
       else if (team) openTeam(Number(team.dataset.team));
-      else if (e.target.id === 'close-sheet' || e.target.id === 'sheet-bg') closeSheet();
+      else if (e.target.id === 'close-sheet') closeSheet();
     });
 
     // ---------- Start ----------
