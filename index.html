@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>B+T Judging</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f5f4f0;
+      --card: #ffffff;
+      --ink: #15213b;
+      --muted: #667085;
+      --line: #e4e2db;
+      --accent: #2a55c4;
+      --accent-soft: #e8eefc;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.45;
+    }
+    header {
+      background: var(--ink);
+      color: #fff;
+      padding: 14px 20px;
+      font-weight: 700;
+    }
+    header small { display: block; font-weight: 500; opacity: .7; font-size: 12px; }
+    main {
+      max-width: 440px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 24px 20px;
+    }
+    h1 { font-size: 24px; margin: 0 0 6px; }
+    p { margin: 0 0 20px; color: var(--muted); }
+    label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+    input {
+      width: 100%;
+      font: inherit;
+      font-size: 17px;          /* 16px+ stops iPhones from zooming in */
+      padding: 13px 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--ink);
+    }
+    input:focus { outline: 3px solid var(--accent-soft); border-color: var(--accent); }
+    button {
+      width: 100%;
+      margin-top: 16px;
+      padding: 14px;
+      font: inherit;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+    .link {
+      background: none;
+      color: var(--accent);
+      width: auto;
+      padding: 8px 0;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <header>B+T Judging <small>JAM Finals</small></header>
+
+  <main>
+    <!-- Screen 1: ask for the judge's name -->
+    <section id="name-screen" class="card">
+      <h1>Welcome, judge</h1>
+      <p>Thanks for judging today. Enter your name to get started.</p>
+      <form id="name-form">
+        <label for="name-input">What's your name?</label>
+        <input id="name-input" type="text" autocomplete="name" placeholder="e.g. Sarah Chen" maxlength="60">
+        <button id="continue-btn" type="submit" disabled>Continue</button>
+      </form>
+    </section>
+
+    <!-- Screen 2: placeholder until we build the next feature -->
+    <section id="welcome-screen" class="card hidden">
+      <h1 id="welcome-title">Hi!</h1>
+      <p>You're all set. Team scoring will appear here.</p>
+      <button class="link" id="change-name">Not you? Change name</button>
+    </section>
+  </main>
+
+  <script>
+    // The judge's name is saved on their own phone, so they only type it once.
+    const STORAGE_KEY = 'bt-judge-name';
+
+    const nameScreen    = document.getElementById('name-screen');
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const nameForm      = document.getElementById('name-form');
+    const nameInput     = document.getElementById('name-input');
+    const continueBtn   = document.getElementById('continue-btn');
+    const welcomeTitle  = document.getElementById('welcome-title');
+    const changeName    = document.getElementById('change-name');
+
+    function getSavedName() {
+      try { return localStorage.getItem(STORAGE_KEY); } catch (e) { return null; }
+    }
+    function saveName(name) {
+      try { localStorage.setItem(STORAGE_KEY, name); } catch (e) {}
+    }
+    function clearName() {
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    }
+
+    function showNameScreen() {
+      welcomeScreen.classList.add('hidden');
+      nameScreen.classList.remove('hidden');
+      nameInput.value = '';
+      continueBtn.disabled = true;
+      nameInput.focus();
+    }
+    function showWelcomeScreen(name) {
+      const firstName = name.split(' ')[0];
+      welcomeTitle.textContent = `Hi, ${firstName}!`;
+      nameScreen.classList.add('hidden');
+      welcomeScreen.classList.remove('hidden');
+    }
+
+    // Only allow Continue once they've typed at least 2 characters.
+    nameInput.addEventListener('input', () => {
+      continueBtn.disabled = nameInput.value.trim().length < 2;
+    });
+
+    nameForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = nameInput.value.trim();
+      if (name.length < 2) return;
+      saveName(name);
+      showWelcomeScreen(name);
+    });
+
+    changeName.addEventListener('click', () => {
+      clearName();
+      showNameScreen();
+    });
+
+    // On load: skip the name screen if this phone already has a name saved.
+    const saved = getSavedName();
+    if (saved) showWelcomeScreen(saved);
+    else showNameScreen();
+  </script>
+</body>
+</html>
