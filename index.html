@@ -143,6 +143,19 @@
     .chip.work.on { background: #fdeee3; border: 1px solid #b54708; color: #b54708; }
     .field-label { font-size: 14px; font-weight: 600; margin-top: 14px; }
     .field-label:first-of-type { margin-top: 4px; }
+    .gut { border: 1.5px solid var(--accent); }
+    .gut-q { font-weight: 700; font-size: 17px; margin: 2px 0 12px; color: var(--ink); }
+    .gut-hint { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
+    .tiers { display: grid; gap: 8px; }
+    .tier { text-align: left; padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--line); background: #fff; }
+    .tier b { display: block; font-size: 16px; }
+    .tier span { font-size: 13px; color: var(--muted); }
+    .tier.on.standout { background: #e3f4ea; border-color: #18794e; } .tier.on.standout b { color: #18794e; }
+    .tier.on.solid { background: #fff4d6; border-color: #9a6700; } .tier.on.solid b { color: #9a6700; }
+    .tier.on.needs { background: #fdeee3; border-color: #b54708; } .tier.on.needs b { color: #b54708; }
+    .status.standout { background: #e3f4ea; color: #18794e; }
+    .status.solid { background: #fff4d6; color: #9a6700; }
+    .status.needs { background: #fdeee3; color: #b54708; }
   </style>
 </head>
 <body>
@@ -186,6 +199,14 @@
     const SCORES_KEY = 'bt-scores-v1';
     const CATEGORIES = 5;                     // Category 1 through 5
     const MAX_POINTS = 5;                     // each category is out of 5
+
+    // Gut check: judged on the pitch itself, not against other teams.
+    const TIERS = [
+      { id: 'standout', label: 'Standout',   desc: 'Could win this' },
+      { id: 'solid',    label: 'Solid',      desc: 'Good, but not a standout' },
+      { id: 'needs',    label: 'Needs work', desc: 'Not ready to advance yet' }
+    ];
+    const tierOf = id => TIERS.find(t => t.id === id);
 
     // Quick-tap notes: specific things a 1-5 score can't tell a team. All optional.
     const NOTES = [
@@ -251,7 +272,7 @@
         const entry = allScores[i];
         const removable = i === teamCount && teamCount > 1 && !entry;
         const status = entry
-          ? `<span class="status done">${totalOf(entry)} / ${CATEGORIES * MAX_POINTS}</span>`
+          ? `<span class="status ${entry.tier || 'done'}">${entry.tier ? tierOf(entry.tier).label + ' · ' : ''}${totalOf(entry)}/${CATEGORIES * MAX_POINTS}</span>`
           : `<span class="status">Not judged</span>`;
         html += `
           <div class="row-wrap" style="display:flex;align-items:center;gap:6px">
@@ -288,6 +309,7 @@
       draft = {
         team: n,
         scores: saved ? { ...saved.scores } : {},
+        tier: saved ? (saved.tier || null) : null,
         notes: saved && saved.notes ? [...saved.notes] : [],
         best: saved ? (saved.best || saved.comment || '') : '',
         improve: saved ? (saved.improve || '') : ''
@@ -300,7 +322,10 @@
       const oldSheet = document.querySelector('.sheet');
       const keepScroll = oldSheet ? oldSheet.scrollTop : 0;
       const scoredCount = Object.keys(draft.scores).length;
-      const ready = scoredCount === CATEGORIES;
+      const ready = scoredCount === CATEGORIES && !!draft.tier;
+      const missing = [];
+      if (!draft.tier) missing.push('gut check');
+      if (scoredCount < CATEGORIES) missing.push(`${CATEGORIES - scoredCount} more ${CATEGORIES - scoredCount === 1 ? 'category' : 'categories'}`);
       const total = Object.values(draft.scores).reduce((a, b) => a + b, 0);
 
       let cats = '';
@@ -340,9 +365,13 @@
               <div class="field-label">What to improve</div>
               <textarea id="improve" maxlength="250" placeholder="You could consider improving…">${escapeHtml(draft.improve)}</textarea>
             </div>
+            <div class="cat gut">
+              <p class="gut-q">What's your gut feeling about Team ${draft.team}?</p>
+              <div class="tiers">${TIERS.map(t => `<button class="tier ${t.id} ${draft.tier === t.id ? 'on' : ''}" data-tier="${t.id}"><b>${t.label}</b><span>${t.desc}</span></button>`).join('')}</div>
+            </div>
             <div class="total"><span>Total</span><b>${total} / ${CATEGORIES * MAX_POINTS}</b></div>
             <button class="primary" id="save-score" ${ready ? '' : 'disabled'}>
-              ${ready ? 'Save' : `Score all ${CATEGORIES} categories to save (${scoredCount}/${CATEGORIES})`}
+              ${ready ? 'Save' : `To save, add: ${missing.join(' and ')}`}
             </button>
           </div>
         </div>`;
@@ -359,8 +388,9 @@
     }
 
     function saveScore() {
-      if (!draft || Object.keys(draft.scores).length !== CATEGORIES) return;
+      if (!draft || Object.keys(draft.scores).length !== CATEGORIES || !draft.tier) return;
       allScores[draft.team] = {
+        tier: draft.tier,
         scores: draft.scores,
         notes: draft.notes,
         best: draft.best.trim(),
@@ -407,6 +437,12 @@
       const remove = e.target.closest('[data-remove]');
       const point = e.target.closest('[data-cat]');
       const note = e.target.closest('[data-note]');
+      const tierBtn = e.target.closest('[data-tier]');
+      if (tierBtn && draft) {
+        draft.tier = draft.tier === tierBtn.dataset.tier ? null : tierBtn.dataset.tier;
+        renderSheet();
+        return;
+      }
       if (note && draft) {
         const id = note.dataset.note;
         draft.notes = draft.notes.includes(id) ? draft.notes.filter(x => x !== id) : [...draft.notes, id];

@@ -8,3 +8,4 @@ Built one feature at a time:
 2. Home screen: list of teams (starts at Team 1–5), + to add more teams
 3. Scoring: tap a team to score Category 1–5 (each out of 5)
 4. Feedback prompts (all optional): quick-tap "Keep doing" / "Work on" notes, plus "What worked" and "What to improve" boxes
+5. Gut check (required): Standout / Solid / Needs work, at the bottom of the scoring sheet; shown with the score on each team card
