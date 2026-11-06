@@ -10,6 +10,7 @@ Built one feature at a time:
 4. Feedback prompts (all optional): quick-tap "Keep doing" / "Work on" notes, plus "What worked" and "What to improve" boxes
 5. Gut check (required): Standout / Solid / Needs work, at the bottom of the scoring sheet; shown with the score on each team card
 6. Google Sheet connection: every Save is sent to a Google Sheet (one row per judge per team), with automatic retry if Wi-Fi drops
+7. Restore by name: entering the same judge name on any phone or browser loads that judge's scores back from the Sheet
 
 ## Google Sheet setup
 

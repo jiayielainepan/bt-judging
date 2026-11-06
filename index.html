@@ -240,22 +240,74 @@
 
     let teamCount = parseInt(load(TEAMS_KEY), 10) || STARTING_TEAMS;
 
-    // Each judge on this phone gets a random ID, so their scores stay separate
-    // (in the Sheet too) even if two judges share a name or share a phone.
-    const DEVICE_KEY = 'bt-judge-id';
+    // Judges are recognized by name: entering the same name (on any phone or browser)
+    // restores that judge's scores from the Google Sheet.
+    // Behind the scenes each judge also gets a random ID, which the Sheet uses to tell rows apart.
     const QUEUE_KEY  = 'bt-send-queue';
-    let deviceId = null;
-    let allScores = {};     // this judge's scores: { "3": { tier, scores: {1: 4, ...}, notes, best, improve } }
+    let judgeName = '';
+    let deviceId = null;    // this judge's ID for new rows
+    let allScores = {};     // this judge's scores: { "3": { tier, scores: {1: 4, ...}, notes, best, improve, savedAt, device } }
 
-    function startJudge() {
-      deviceId = load(DEVICE_KEY);
+    const nameKey = name => name.trim().toLowerCase().replace(/\s+/g, ' ');
+
+    function startJudge(name) {
+      judgeName = name;
+      const idKey = `bt-judge-id-${nameKey(name)}`;
+      deviceId = load(idKey);
       if (!deviceId) {
         deviceId = 'j-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
-        store(DEVICE_KEY, deviceId);
+        store(idKey, deviceId);
       }
-      try { allScores = JSON.parse(load(`${SCORES_KEY}-${deviceId}`)) || {}; } catch (e) { allScores = {}; }
+      try { allScores = JSON.parse(load(`${SCORES_KEY}-name-${nameKey(name)}`)) || {}; } catch (e) { allScores = {}; }
     }
-    function saveAllScores() { store(`${SCORES_KEY}-${deviceId}`, JSON.stringify(allScores)); }
+    function saveAllScores() { store(`${SCORES_KEY}-name-${nameKey(judgeName)}`, JSON.stringify(allScores)); }
+
+    // Pull this judge's scores back from the Sheet and merge them with what's on this phone.
+    // For each team, whichever version was saved most recently wins.
+    let restoreNote = '';
+    async function restoreFromSheet() {
+      if (!API_URL || !judgeName) return;
+      const forName = judgeName;
+      try {
+        const res = await fetch(API_URL + '?t=' + Date.now());
+        const out = await res.json();
+        if (!out.ok || forName !== judgeName) return;   // judge changed while loading
+        const mine = (out.rows || []).filter(r => nameKey(String(r['Judge'] || '')) === nameKey(forName));
+        let restored = 0;
+        mine.forEach(r => {
+          const teamNum = parseInt(String(r['Team']).replace(/\D/g, ''), 10);
+          if (!teamNum) return;
+          const savedAt = Date.parse(r['Last updated']) || 0;
+          const local = allScores[teamNum];
+          if (local && (local.savedAt || 0) >= savedAt) return;   // phone has the newer version
+          const scores = {};
+          for (let c = 1; c <= CATEGORIES; c++) scores[c] = Number(r[`Category ${c}`]) || 0;
+          const tier = TIERS.find(t => t.label === r['Gut check']);
+          const noteIds = [r['Keep doing'], r['Work on']].join('; ').split('; ')
+            .map(text => (NOTES.find(n => n.text === text) || {}).id).filter(Boolean);
+          allScores[teamNum] = {
+            tier: tier ? tier.id : null,
+            scores: scores,
+            notes: noteIds,
+            best: String(r['What worked'] || ''),
+            improve: String(r['What to improve'] || ''),
+            savedAt: savedAt,
+            device: String(r['Device ID'] || deviceId)
+          };
+          restored++;
+          if (teamNum > teamCount) { teamCount = teamNum; store(TEAMS_KEY, teamCount); }
+        });
+        if (restored) {
+          saveAllScores();
+          restoreNote = `Welcome back! Restored ${restored} scored team${restored > 1 ? 's' : ''}.`;
+          renderTeams();
+        }
+        showSyncStatus();
+      } catch (e) {
+        restoreNote = "Couldn't check the Sheet for saved scores. Showing what's on this phone.";
+        showSyncStatus();
+      }
+    }
 
     // ---------- Sending scores to the Google Sheet ----------
     // Every save goes into a queue on the phone first, then gets sent.
@@ -271,7 +323,7 @@
       const scores = [];
       for (let c = 1; c <= CATEGORIES; c++) scores.push(entry.scores[c]);
       return {
-        judge: load(NAME_KEY) || '',
+        judge: judgeName,
         team: `Team ${teamNum}`,
         gut: entry.tier ? tierOf(entry.tier).label : '',
         scores: scores,
@@ -280,7 +332,7 @@
         work: noteText('work'),
         best: entry.best || '',
         improve: entry.improve || '',
-        device: deviceId
+        device: entry.device || deviceId   // restored scores keep their original row
       };
     }
 
@@ -319,9 +371,10 @@
       const el = $('sync-status');
       if (!el) return;
       if (!API_URL) { el.className = 'sync'; el.textContent = 'Not connected to the Google Sheet yet. Scores stay on this phone.'; return; }
-      const mine = queue.filter(q => q.device === deviceId).length;
+      const mine = queue.filter(q => nameKey(q.judge || '') === nameKey(judgeName)).length;
       if (sending && mine) { el.className = 'sync'; el.textContent = 'Sending scores…'; }
       else if (mine) { el.className = 'sync warn'; el.textContent = `⚠ ${mine} score${mine > 1 ? 's' : ''} not sent yet. Will retry automatically.`; }
+      else if (restoreNote) { el.className = restoreNote.startsWith('Welcome') ? 'sync ok' : 'sync warn'; el.textContent = restoreNote; }
       else if (Object.keys(allScores).length) { el.className = 'sync ok'; el.textContent = '✓ All your scores are saved'; }
       else { el.className = 'sync'; el.textContent = ''; }
     }
@@ -483,7 +536,10 @@
 
     function saveScore() {
       if (!draft || Object.keys(draft.scores).length !== CATEGORIES || !draft.tier) return;
+      const previous = allScores[draft.team];
       allScores[draft.team] = {
+        savedAt: Date.now(),
+        device: previous && previous.device ? previous.device : deviceId,
         tier: draft.tier,
         scores: draft.scores,
         notes: draft.notes,
@@ -491,6 +547,7 @@
         improve: draft.improve.trim()
       };
       saveAllScores();
+      restoreNote = '';
       queueScore(draft.team, allScores[draft.team]);
       draft = null;
       renderSheet();
@@ -520,15 +577,17 @@
       const name = nameInput.value.trim();
       if (name.length < 2) return;
       store(NAME_KEY, name);
-      startJudge();
+      startJudge(name);
+      restoreNote = API_URL ? 'Checking for your saved scores…' : '';
       showHome(name);
+      restoreFromSheet().then(() => { if (restoreNote === 'Checking for your saved scores…') { restoreNote = ''; showSyncStatus(); } });
     });
 
     $('change-name').addEventListener('click', () => {
-      // A different person on this phone gets a fresh judge ID and their own score list.
-      // The previous judge's scores are already in the Sheet (or still in the send queue).
+      // Switch judges. The previous judge's scores stay saved (on this phone and in the Sheet),
+      // and come back when they enter their name again.
       forget(NAME_KEY);
-      forget(DEVICE_KEY);
+      judgeName = ''; allScores = {}; restoreNote = '';
       showNameScreen();
     });
     $('add-team-top').addEventListener('click', addTeam);
@@ -563,7 +622,7 @@
 
     // ---------- Start ----------
     const saved = load(NAME_KEY);
-    if (saved) { startJudge(); showHome(saved); sendQueue(); }
+    if (saved) { startJudge(saved); showHome(saved); sendQueue(); restoreFromSheet(); }
     else showNameScreen();
   </script>
 </body>
