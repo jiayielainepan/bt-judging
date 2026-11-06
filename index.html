@@ -15,6 +15,8 @@
       --line: #e4e2db;
       --accent: #2a55c4;
       --accent-soft: #e8eefc;
+      --danger: #b42318;
+      --danger-soft: #fde8e7;
     }
     * { box-sizing: border-box; }
     html, body {
@@ -26,6 +28,7 @@
       font-size: 16px;
       line-height: 1.45;
     }
+    button { font: inherit; color: inherit; cursor: pointer; border: none; background: none; }
     header {
       background: var(--ink);
       color: #fff;
@@ -33,11 +36,7 @@
       font-weight: 700;
     }
     header small { display: block; font-weight: 500; opacity: .7; font-size: 12px; }
-    main {
-      max-width: 440px;
-      margin: 0 auto;
-      padding: 40px 20px;
-    }
+    main { max-width: 440px; margin: 0 auto; padding: 28px 20px 40px; }
     .card {
       background: var(--card);
       border: 1px solid var(--line);
@@ -58,90 +57,190 @@
       color: var(--ink);
     }
     input:focus { outline: 3px solid var(--accent-soft); border-color: var(--accent); }
-    button {
+    .primary {
       width: 100%;
       margin-top: 16px;
       padding: 14px;
-      font: inherit;
       font-weight: 600;
-      border: none;
       border-radius: 12px;
       background: var(--accent);
       color: #fff;
-      cursor: pointer;
     }
-    button:disabled { opacity: .4; cursor: not-allowed; }
-    .link {
-      background: none;
-      color: var(--accent);
-      width: auto;
-      padding: 8px 0;
-      margin-top: 12px;
-      font-size: 14px;
+    .primary:disabled { opacity: .4; cursor: not-allowed; }
+    .link { color: var(--accent); font-size: 14px; font-weight: 600; padding: 4px 0; }
+    .hidden { display: none !important; }
+
+    /* Home screen */
+    .hello { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
+    .hello h1 { margin: 0; }
+    .sub { color: var(--muted); font-size: 14px; margin: 0 0 22px; }
+    .list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .list-head h2 { font-size: 16px; margin: 0; }
+    .plus {
+      width: 40px; height: 40px; border-radius: 12px;
+      background: var(--accent); color: #fff;
+      font-size: 24px; line-height: 1; display: grid; place-items: center;
     }
-    .hidden { display: none; }
+    .team {
+      display: flex; align-items: center; gap: 12px;
+      width: 100%; text-align: left;
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      padding: 14px; margin-bottom: 8px;
+    }
+    .team:hover { border-color: var(--accent); }
+    .num {
+      width: 40px; height: 40px; border-radius: 11px; flex: none;
+      display: grid; place-items: center;
+      background: var(--accent-soft); color: var(--accent); font-weight: 700;
+    }
+    .team .info { flex: 1; min-width: 0; }
+    .team .info b { display: block; }
+    .team .info span { font-size: 13px; color: var(--muted); }
+    .status { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: #f0efea; color: var(--muted); white-space: nowrap; }
+    .remove {
+      width: 32px; height: 32px; border-radius: 9px; flex: none;
+      color: var(--muted); font-size: 20px; display: grid; place-items: center;
+    }
+    .remove:hover { background: var(--danger-soft); color: var(--danger); }
+    .add-row {
+      width: 100%; padding: 14px; border-radius: 14px;
+      border: 1.5px dashed #cfcac0; color: var(--accent); font-weight: 600;
+    }
+    .add-row:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+    /* Bottom sheet (placeholder for scoring) */
+    .sheet-bg { position: fixed; inset: 0; background: rgba(21,33,59,.45); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
+    .sheet {
+      background: var(--bg); width: 100%; max-width: 440px;
+      border-radius: 20px 20px 0 0; padding: 22px 20px 26px; text-align: center;
+    }
+    @media (min-width: 600px) { .sheet-bg { align-items: center; } .sheet { border-radius: 20px; } }
+    .sheet .num { margin: 0 auto 10px; width: 52px; height: 52px; font-size: 20px; }
+    .sheet h2 { margin: 0 0 6px; }
   </style>
 </head>
 <body>
-  <header>B+T Judging <small>JAM Finals</small></header>
+  <header>B+T Judging <small>JAM Challenge Round</small></header>
 
   <main>
     <!-- Screen 1: ask for the judge's name -->
-    <section id="name-screen" class="card">
+    <section id="name-screen" class="card hidden">
       <h1>Welcome, judge</h1>
       <p>Thanks for judging today. Enter your name to get started.</p>
       <form id="name-form">
         <label for="name-input">What's your name?</label>
         <input id="name-input" type="text" autocomplete="name" placeholder="e.g. Sarah Chen" maxlength="60">
-        <button id="continue-btn" type="submit" disabled>Continue</button>
+        <button id="continue-btn" class="primary" type="submit" disabled>Continue</button>
       </form>
     </section>
 
-    <!-- Screen 2: placeholder until we build the next feature -->
-    <section id="welcome-screen" class="card hidden">
-      <h1 id="welcome-title">Hi!</h1>
-      <p>You're all set. Team scoring will appear here.</p>
-      <button class="link" id="change-name">Not you? Change name</button>
+    <!-- Screen 2: home, the list of teams in presenting order -->
+    <section id="home-screen" class="hidden">
+      <div class="hello">
+        <h1 id="hello-title">Hi!</h1>
+        <button class="link" id="change-name">Not you?</button>
+      </div>
+
+      <div class="list-head">
+        <h2 id="team-count">Teams</h2>
+        <button class="plus" id="add-team-top" aria-label="Add a team" title="Add a team">+</button>
+      </div>
+      <div id="team-list"></div>
+      <button class="add-row" id="add-team-bottom">+ Add team</button>
     </section>
   </main>
 
+  <div id="sheet"></div>
+
   <script>
-    // The judge's name is saved on their own phone, so they only type it once.
-    const STORAGE_KEY = 'bt-judge-name';
+    // ---------- Settings ----------
+    const STARTING_TEAMS = 5;                 // how many teams to show at first
+    const NAME_KEY  = 'bt-judge-name';
+    const TEAMS_KEY = 'bt-team-count-v2';
 
-    const nameScreen    = document.getElementById('name-screen');
-    const welcomeScreen = document.getElementById('welcome-screen');
-    const nameForm      = document.getElementById('name-form');
-    const nameInput     = document.getElementById('name-input');
-    const continueBtn   = document.getElementById('continue-btn');
-    const welcomeTitle  = document.getElementById('welcome-title');
-    const changeName    = document.getElementById('change-name');
+    // ---------- Saved on this phone ----------
+    function load(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+    function store(key, value) { try { localStorage.setItem(key, value); } catch (e) {} }
+    function forget(key) { try { localStorage.removeItem(key); } catch (e) {} }
 
-    function getSavedName() {
-      try { return localStorage.getItem(STORAGE_KEY); } catch (e) { return null; }
-    }
-    function saveName(name) {
-      try { localStorage.setItem(STORAGE_KEY, name); } catch (e) {}
-    }
-    function clearName() {
-      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
-    }
+    let teamCount = parseInt(load(TEAMS_KEY), 10) || STARTING_TEAMS;
 
+    // ---------- Elements ----------
+    const $ = (id) => document.getElementById(id);
+    const nameScreen = $('name-screen'), homeScreen = $('home-screen');
+    const nameForm = $('name-form'), nameInput = $('name-input'), continueBtn = $('continue-btn');
+
+    // ---------- Screens ----------
     function showNameScreen() {
-      welcomeScreen.classList.add('hidden');
+      homeScreen.classList.add('hidden');
       nameScreen.classList.remove('hidden');
       nameInput.value = '';
       continueBtn.disabled = true;
       nameInput.focus();
     }
-    function showWelcomeScreen(name) {
-      const firstName = name.split(' ')[0];
-      welcomeTitle.textContent = `Hi, ${firstName}!`;
+
+    function showHome(name) {
+      $('hello-title').textContent = `Hi, ${name.split(' ')[0]}!`;
       nameScreen.classList.add('hidden');
-      welcomeScreen.classList.remove('hidden');
+      homeScreen.classList.remove('hidden');
+      renderTeams();
     }
 
-    // Only allow Continue once they've typed at least 2 characters.
+    function ordinal(n) {
+      const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+      return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    }
+
+    function renderTeams() {
+      $('team-count').textContent = `Teams (${teamCount})`;
+      let html = '';
+      for (let i = 1; i <= teamCount; i++) {
+        // Only the last team can be removed, so the numbering never has gaps.
+        const removable = i === teamCount && teamCount > 1;
+        html += `
+          <div class="row-wrap" style="display:flex;align-items:center;gap:6px">
+            <button class="team" data-team="${i}">
+              <span class="num">${i}</span>
+              <span class="info"><b>Team ${i}</b></span>
+              <span class="status">Not judged</span>
+            </button>
+            ${removable ? `<button class="remove" data-remove="${i}" aria-label="Remove Team ${i}" title="Remove Team ${i}">×</button>` : (teamCount > 1 ? '<span style="width:32px;flex:none"></span>' : '')}
+          </div>`;
+      }
+      $('team-list').innerHTML = html;
+    }
+
+    function addTeam() {
+      teamCount++;
+      store(TEAMS_KEY, teamCount);
+      renderTeams();
+      // Scroll the new team into view
+      const last = document.querySelector(`[data-team="${teamCount}"]`);
+      if (last) last.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function removeLastTeam() {
+      if (teamCount <= 1) return;
+      teamCount--;
+      store(TEAMS_KEY, teamCount);
+      renderTeams();
+    }
+
+    // Placeholder: scoring is the next feature.
+    function openTeam(n) {
+      $('sheet').innerHTML = `
+        <div class="sheet-bg" id="sheet-bg">
+          <div class="sheet">
+            <div class="num">${n}</div>
+            <h2>Team ${n}</h2>
+            <p>Scoring for this team is the next feature we'll build.</p>
+            <button class="primary" id="close-sheet">Back to teams</button>
+          </div>
+        </div>`;
+    }
+    function closeSheet() { $('sheet').innerHTML = ''; }
+
+    // ---------- Events ----------
     nameInput.addEventListener('input', () => {
       continueBtn.disabled = nameInput.value.trim().length < 2;
     });
@@ -150,18 +249,25 @@
       e.preventDefault();
       const name = nameInput.value.trim();
       if (name.length < 2) return;
-      saveName(name);
-      showWelcomeScreen(name);
+      store(NAME_KEY, name);
+      showHome(name);
     });
 
-    changeName.addEventListener('click', () => {
-      clearName();
-      showNameScreen();
+    $('change-name').addEventListener('click', () => { forget(NAME_KEY); showNameScreen(); });
+    $('add-team-top').addEventListener('click', addTeam);
+    $('add-team-bottom').addEventListener('click', addTeam);
+
+    document.addEventListener('click', (e) => {
+      const team = e.target.closest('[data-team]');
+      const remove = e.target.closest('[data-remove]');
+      if (remove) removeLastTeam();
+      else if (team) openTeam(Number(team.dataset.team));
+      else if (e.target.id === 'close-sheet' || e.target.id === 'sheet-bg') closeSheet();
     });
 
-    // On load: skip the name screen if this phone already has a name saved.
-    const saved = getSavedName();
-    if (saved) showWelcomeScreen(saved);
+    // ---------- Start ----------
+    const saved = load(NAME_KEY);
+    if (saved) showHome(saved);
     else showNameScreen();
   </script>
 </body>
