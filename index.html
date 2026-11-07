@@ -846,18 +846,17 @@
     }
     setInterval(() => { if (view === 'panel') updateLive(); }, 1000);
 
-    // Draft report: built only from what judges actually wrote or tapped
+    // Draft report: ONLY the judges' own written comments, nothing added.
+    // Empty if no judge has written a comment for this team.
     function buildDraft(team, entries) {
       const rows = entries.filter(e => e.team === team);
       const uniq = a => [...new Set(a.map(x => x.trim()).filter(Boolean))];
-      const split = f => rows.flatMap(e => e[f].split('; '));
-      const worked = uniq([...rows.map(e => e.best), ...split('keep')]);
-      const improve = uniq([...rows.map(e => e.improve), ...split('work')]);
-      if (!worked.length && !improve.length) return '';
-      let out = `Team ${team}: JAM Challenge Round feedback`;
-      if (worked.length) out += `\n\nWhat worked\n${worked.map(t => '• ' + t).join('\n')}`;
-      if (improve.length) out += `\n\nWhat to work on\n${improve.map(t => '• ' + t).join('\n')}`;
-      return out;
+      const worked = uniq(rows.map(e => e.best));
+      const improve = uniq(rows.map(e => e.improve));
+      const parts = [];
+      if (worked.length) parts.push(`What worked\n${worked.map(t => '• ' + t).join('\n')}`);
+      if (improve.length) parts.push(`What to work on\n${improve.map(t => '• ' + t).join('\n')}`);
+      return parts.join('\n\n');
     }
 
     function openPanelTeam(team) {
@@ -882,7 +881,7 @@
               : '<p style="margin:0">No comments yet.</p>'}
           </div>
           <div class="pcard"><h3>Draft feedback report</h3>
-            <textarea id="pm-draft" placeholder="No draft yet. It fills in once judges leave comments for this team.">${escapeHtml(draft)}</textarea>
+            <textarea id="pm-draft" placeholder="No draft yet. It fills in once judges write comments for this team.">${escapeHtml(draft)}</textarea>
             <div class="pm-actions"><button class="primary" id="pm-copy" ${draft.trim() ? '' : 'disabled'}>Copy</button>
               ${edited ? '<button class="link" id="pm-undo">Undo my edits</button>' : ''}</div>
           </div>
