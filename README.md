@@ -17,3 +17,4 @@ Built one feature at a time:
 
 The script that receives scores is in `apps-script/Code.gs`. Paste it into the Sheet's Extensions > Apps Script,
 deploy it as a Web app (Execute as: Me, Who has access: Anyone), and put the Web app URL in `API_URL` in `index.html`.
+9. Reset all data (Panel): clears the Sheet (after copying it to a backup tab) and every judge's phone. Needs the updated `apps-script/Code.gs` deployed, with the same `PANEL_PASSWORD` as `index.html`.

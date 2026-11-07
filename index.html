@@ -51,6 +51,10 @@
     .live .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.2); }
     .live.stale .dot { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.2); }
     .lock-btn { margin-left: auto; color: var(--muted); font-size: 13px; font-weight: 600; }
+    .reset-row { margin-top: 26px; text-align: center; }
+    .reset-btn { color: var(--danger); font-size: 13px; font-weight: 600; padding: 8px 12px; border: 1px solid #f4c7c3; border-radius: 10px; background: #fff; }
+    .reset-btn:hover { background: var(--danger-soft); }
+    .danger { background: var(--danger) !important; }
     .jchips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
     .jchip { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
     .jchip b { font-weight: 600; }
@@ -331,6 +335,30 @@
     }
     function saveAllScores() { store(`${SCORES_KEY}-name-${nameKey(judgeName)}`, JSON.stringify(allScores)); }
 
+    // If an organizer reset all data, clear anything on this phone saved before the reset.
+    const RESET_SEEN_KEY = 'bt-reset-seen';
+    function applyReset(resetAt) {
+      resetAt = Number(resetAt) || 0;
+      if (!resetAt || resetAt <= (Number(load(RESET_SEEN_KEY)) || 0)) return false;
+      store(RESET_SEEN_KEY, resetAt);
+      // Every judge's saved scores on this phone
+      try {
+        Object.keys(localStorage).filter(k => k.startsWith(SCORES_KEY + '-')).forEach(k => {
+          const saved = JSON.parse(localStorage.getItem(k) || '{}');
+          Object.keys(saved).forEach(t => { if ((saved[t].savedAt || 0) < resetAt) delete saved[t]; });
+          localStorage.setItem(k, JSON.stringify(saved));
+        });
+      } catch (e) {}
+      Object.keys(allScores).forEach(t => { if ((allScores[t].savedAt || 0) < resetAt) delete allScores[t]; });
+      queue = queue.filter(q => (q.queuedAt || 0) >= resetAt);
+      saveQueue();
+      teamCount = STARTING_TEAMS;
+      store(TEAMS_KEY, teamCount);
+      restoreNote = '';
+      if (view === 'judge' && judgeName) { renderTeams(); showSyncStatus(); }
+      return true;
+    }
+
     // Pull this judge's scores back from the Sheet and merge them with what's on this phone.
     // For each team, whichever version was saved most recently wins.
     let restoreNote = '';
@@ -341,6 +369,7 @@
         const res = await fetch(`${API_URL}?action=judge&name=${encodeURIComponent(forName)}&t=${Date.now()}`);
         const out = await res.json();
         if (!out.ok || forName !== judgeName) return;   // judge changed while loading
+        applyReset(out.resetAt);
         const mine = (out.rows || []).filter(r => nameKey(String(r['Judge'] || '')) === nameKey(forName));
         let restored = 0;
         mine.forEach(r => {
@@ -410,6 +439,7 @@
       const payload = buildPayload(teamNum, entry);
       // If an older version of this same score is still waiting, replace it
       queue = queue.filter(q => !(q.device === payload.device && q.team === payload.team));
+      payload.queuedAt = Date.now();
       queue.push(payload);
       saveQueue();
       sendQueue();
@@ -449,6 +479,7 @@
     }
 
     setInterval(sendQueue, 10000);                 // retry every 10 seconds
+    setInterval(() => { if (view === 'judge' && judgeName && !draft) restoreFromSheet(); }, 30000);  // pick up resets
     window.addEventListener('online', sendQueue);  // and as soon as Wi-Fi comes back
 
     function totalOf(entry) {
@@ -728,6 +759,7 @@
         if (!out.ok) {
           if (!panelRows) panelError = "Couldn't load scores.";
         } else {
+          applyReset(out.resetAt);
           panelRows = out.rows || []; panelUpdated = Date.now(); panelError = '';
         }
       } catch (e) {
@@ -837,7 +869,8 @@
           <button class="lock-btn" id="lock-panel">Lock panel</button>
         </div>
         <div class="jchips">${D.judges.map(j => `<span class="jchip"><b>${escapeHtml(j.name)}</b> ${j.n}/${D.totalTeams} teams · avg ${j.avg.toFixed(1)}/${CATEGORIES * MAX_POINTS}<span class="jbar"><i style="width:${Math.min(100, j.n / D.totalTeams * 100)}%"></i></span></span>`).join('')}</div>
-        <div class="pcard"><h2>Live ranking</h2>${table}</div>`;
+        <div class="pcard"><h2>Live ranking</h2>${table}</div>
+        <div class="reset-row"><button class="reset-btn" id="reset-open">Reset all data</button></div>`;
       updateLive();
     }
 
@@ -887,6 +920,42 @@
     }
     function closePanelTeam() { panelTeam = null; $('panel-modal').innerHTML = ''; }
 
+    let resetError = '', resetting = false;
+    function openReset() {
+      panelTeam = null;
+      $('panel-modal').innerHTML = `
+        <div class="pm-bg" id="pm-bg"><div class="pm" style="max-width:420px">
+          <div class="sheet-top" style="margin-bottom:8px"><h2>Reset all data?</h2><button class="cancel" id="pm-close">Cancel</button></div>
+          <p style="margin:0 0 14px">This deletes <b>every judge's scores and comments</b> from the Google Sheet and from judges' phones, and resets the team list to Team 1–${STARTING_TEAMS}. A backup copy of the current scores is saved as a new tab in the Sheet.</p>
+          <label for="reset-confirm">Type RESET to confirm</label>
+          <input id="reset-confirm" type="text" autocomplete="off" autocapitalize="characters">
+          <button class="primary danger" id="reset-go" disabled>${resetting ? 'Resetting…' : 'Delete all data'}</button>
+          ${resetError ? `<p class="err">${escapeHtml(resetError)}</p>` : ''}
+        </div></div>`;
+    }
+    async function doReset() {
+      if (resetting) return;
+      resetting = true; resetError = ''; openReset();
+      try {
+        const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'reset', key: PANEL_PASSWORD }) });
+        const out = await res.json();
+        if (!out.ok) throw new Error(out.error === 'wrong-password'
+          ? 'The Google Sheet script has a different password. Make sure PANEL_PASSWORD matches in both.'
+          : (out.error || 'Reset failed'));
+        applyReset(out.resetAt);
+        resetting = false;
+        closePanelTeam();
+        panelRows = [];
+        renderPanel();
+        loadPanel();
+      } catch (e) {
+        resetting = false;
+        resetError = /password/.test(e.message) ? e.message
+          : "Couldn't reset. If you just updated the script, make sure you deployed a new version.";
+        openReset();
+      }
+    }
+
     document.addEventListener('submit', (e) => {
       if (e.target.id !== 'unlock-form') return;
       e.preventDefault();
@@ -898,12 +967,17 @@
       renderPanel();
       loadPanel();
     });
+    document.addEventListener('input', (e) => {
+      if (e.target.id === 'reset-confirm') $('reset-go').disabled = e.target.value.trim().toUpperCase() !== 'RESET';
+    });
     document.addEventListener('click', (e) => {
       const tab = e.target.closest('[data-view]');
       const row = e.target.closest('[data-pteam]');
       if (tab) setView(tab.dataset.view);
       else if (row) openPanelTeam(Number(row.dataset.pteam));
       else if (e.target.id === 'pm-close' || e.target.id === 'pm-bg') closePanelTeam();
+      else if (e.target.id === 'reset-open') { resetError = ''; openReset(); }
+      else if (e.target.id === 'reset-go') doReset();
       else if (e.target.id === 'lock-panel') { forget(PANEL_KEY); panelRows = null; closePanelTeam(); renderPanel(); }
     });
 
