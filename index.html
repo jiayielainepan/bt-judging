@@ -235,7 +235,7 @@
     .erow.two { flex-wrap: wrap; row-gap: 6px; }
     .erow input { flex: 1 1 0; min-width: 0; padding: 9px 11px; font-size: 15px; border-radius: 10px; }
     .erow .line2 { flex-basis: 100%; display: flex; align-items: center; gap: 6px; padding-left: 38px; }
-    .pos { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: var(--accent-soft); color: var(--accent); flex: none; }
+    .apos { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: var(--accent-soft); color: var(--accent); flex: none; }
     .pts { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-right: auto; }
     .pts input { width: 60px; flex: none; text-align: center; }
     .icon { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); font-size: 14px; flex: none; }
@@ -966,7 +966,7 @@
           <div class="asub">Name each category and set how many points it's worth.</div>
           ${E.categories.map((c, i) => `
             <div class="erow two">
-              <span class="pos">${i + 1}</span>
+              <span class="apos">${i + 1}</span>
               <input class="field" data-cat-name="${i}" value="${escapeHtml(c.name)}" placeholder="Category name" aria-label="Category ${i + 1} name" maxlength="60">
               <button class="icon del" data-adel="cat:${i}" ${E.categories.length === 1 ? 'disabled' : ''} title="Remove category">✕</button>
               <div class="line2">
@@ -983,7 +983,7 @@
           <div class="asub">In presenting order. Team names are optional, e.g. a code name like "Botties".</div>
           ${E.teams.map((t, i) => `
             <div class="erow">
-              <span class="pos">${i + 1}</span>
+              <span class="apos">${i + 1}</span>
               <input class="field" data-team-name="${i}" value="${escapeHtml(t.name)}" placeholder="Team ${i + 1} name (optional)" aria-label="Team ${i + 1} name" maxlength="40">
               <button class="icon" data-amove="team:${i}:-1" ${i === 0 ? 'disabled' : ''} title="Move up">▲</button>
               <button class="icon" data-amove="team:${i}:1" ${i === E.teams.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
