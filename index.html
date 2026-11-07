@@ -89,9 +89,7 @@
     .meter .v { width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
     .quote { font-size: 14px; border-left: 3px solid var(--line); padding: 2px 0 2px 10px; margin: 8px 0; }
     .quote small { display: block; color: var(--muted); font-size: 12px; }
-    #pm-draft { min-height: 240px; font-size: 14px; }
-    .pm-actions { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
-    .pm-actions .primary { width: auto; margin: 0; padding: 9px 18px; }
+
     .card {
       background: var(--card);
       border: 1px solid var(--line);
@@ -694,8 +692,6 @@
     const TIER_VALUE = { 'Standout': 3, 'Solid': 2, 'Needs work': 1 };
     let view = 'judge';
     let panelRows = null, panelUpdated = 0, panelError = '', panelTeam = null, panelLoading = false;
-    let panelDrafts = {};
-    try { panelDrafts = JSON.parse(load('bt-panel-drafts')) || {}; } catch (e) { panelDrafts = {}; }
     const avgOf = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
 
     function setView(v) {
@@ -733,7 +729,7 @@
       panelLoading = false;
       if (view === 'panel') {
         renderPanel();
-        if (panelTeam && document.activeElement && document.activeElement.id !== 'pm-draft') openPanelTeam(panelTeam);
+        if (panelTeam) openPanelTeam(panelTeam);
       }
     }
     setInterval(() => { if (view === 'panel') loadPanel(); }, 10000);   // live: refresh every 10 seconds
@@ -846,19 +842,6 @@
     }
     setInterval(() => { if (view === 'panel') updateLive(); }, 1000);
 
-    // Draft report: ONLY the judges' own written comments, nothing added.
-    // Empty if no judge has written a comment for this team.
-    function buildDraft(team, entries) {
-      const rows = entries.filter(e => e.team === team);
-      const uniq = a => [...new Set(a.map(x => x.trim()).filter(Boolean))];
-      const worked = uniq(rows.map(e => e.best));
-      const improve = uniq(rows.map(e => e.improve));
-      const parts = [];
-      if (worked.length) parts.push(`What worked\n${worked.map(t => '• ' + t).join('\n')}`);
-      if (improve.length) parts.push(`What to work on\n${improve.map(t => '• ' + t).join('\n')}`);
-      return parts.join('\n\n');
-    }
-
     function openPanelTeam(team) {
       panelTeam = team;
       const D = panelStats();
@@ -866,8 +849,6 @@
       const cats = [];
       for (let c = 0; c < CATEGORIES; c++) cats.push({ label: `Category ${c + 1}`, v: avgOf(rows.map(e => e.scores[c])) });
       const worked = rows.filter(e => e.best.trim()), improve = rows.filter(e => e.improve.trim());
-      const edited = panelDrafts[team] !== undefined;
-      const draft = edited ? panelDrafts[team] : buildDraft(team, D.entries);
       $('panel-modal').innerHTML = `
         <div class="pm-bg" id="pm-bg"><div class="pm">
           <div class="sheet-top" style="margin-bottom:12px"><h2>Team ${team}</h2><button class="cancel" id="pm-close">Close</button></div>
@@ -880,15 +861,9 @@
                 improve.map(e => `<div class="quote">${escapeHtml(e.improve)}<small>${escapeHtml(e.judge)} · what to improve</small></div>`).join('')
               : '<p style="margin:0">No comments yet.</p>'}
           </div>
-          <div class="pcard"><h3>Draft feedback report</h3>
-            <textarea id="pm-draft" placeholder="No draft yet. It fills in once judges write comments for this team.">${escapeHtml(draft)}</textarea>
-            <div class="pm-actions"><button class="primary" id="pm-copy" ${draft.trim() ? '' : 'disabled'}>Copy</button>
-              ${edited ? '<button class="link" id="pm-undo">Undo my edits</button>' : ''}</div>
-          </div>
         </div></div>`;
     }
     function closePanelTeam() { panelTeam = null; $('panel-modal').innerHTML = ''; }
-    function savePanelDrafts() { store('bt-panel-drafts', JSON.stringify(panelDrafts)); }
 
     document.addEventListener('submit', (e) => {
       if (e.target.id !== 'unlock-form') return;
@@ -901,25 +876,12 @@
       renderPanel();
       loadPanel();
     });
-    document.addEventListener('input', (e) => {
-      if (e.target.id !== 'pm-draft' || !panelTeam) return;
-      const first = panelDrafts[panelTeam] === undefined;
-      panelDrafts[panelTeam] = e.target.value;
-      savePanelDrafts();
-      $('pm-copy').disabled = !e.target.value.trim();
-      if (first) { const pos = e.target.selectionStart; openPanelTeam(panelTeam); const t = $('pm-draft'); t.focus(); t.setSelectionRange(pos, pos); }
-    });
     document.addEventListener('click', (e) => {
       const tab = e.target.closest('[data-view]');
       const row = e.target.closest('[data-pteam]');
       if (tab) setView(tab.dataset.view);
       else if (row) openPanelTeam(Number(row.dataset.pteam));
       else if (e.target.id === 'pm-close' || e.target.id === 'pm-bg') closePanelTeam();
-      else if (e.target.id === 'pm-undo') { delete panelDrafts[panelTeam]; savePanelDrafts(); openPanelTeam(panelTeam); }
-      else if (e.target.id === 'pm-copy') {
-        const btn = e.target, txt = $('pm-draft').value;
-        try { navigator.clipboard.writeText(txt).then(() => { btn.textContent = 'Copied'; setTimeout(() => btn.textContent = 'Copy', 1500); }, () => {}); } catch (err) {}
-      }
       else if (e.target.id === 'lock-panel') { forget(PANEL_KEY); panelRows = null; closePanelTeam(); renderPanel(); }
     });
 
