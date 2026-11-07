@@ -89,6 +89,13 @@
     .meter .v { width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
     .quote { font-size: 14px; border-left: 3px solid var(--line); padding: 2px 0 2px 10px; margin: 8px 0; }
     .quote small { display: block; color: var(--muted); font-size: 12px; }
+    .ngroup { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin: 12px 0 6px; }
+    .ngroup:first-of-type { margin-top: 0; }
+    .ngroup.keep { color: #18794e; } .ngroup.work { color: #b54708; }
+    .nlist { display: flex; flex-wrap: wrap; gap: 6px; }
+    .nchip { font-size: 13px; padding: 5px 10px; border-radius: 999px; }
+    .nchip.keep { background: #e3f4ea; color: #18794e; } .nchip.work { background: #fdeee3; color: #b54708; }
+    .nchip small { opacity: .75; margin-left: 4px; }
 
     .card {
       background: var(--card);
@@ -849,11 +856,26 @@
       const cats = [];
       for (let c = 0; c < CATEGORIES; c++) cats.push({ label: `Category ${c + 1}`, v: avgOf(rows.map(e => e.scores[c])) });
       const worked = rows.filter(e => e.best.trim()), improve = rows.filter(e => e.improve.trim());
+      // Quick-tap notes, with how many judges tapped each one
+      const tally = field => {
+        const count = {};
+        rows.forEach(e => e[field].split('; ').map(t => t.trim()).filter(Boolean).forEach(t => count[t] = (count[t] || 0) + 1));
+        return Object.entries(count).sort((a, b) => b[1] - a[1]);
+      };
+      const keepNotes = tally('keep'), workNotes = tally('work');
+      const noteChips = (list, type) => list.map(([t, n]) =>
+        `<span class="nchip ${type}">${type === 'keep' ? '+' : '−'} ${escapeHtml(t)}<small>${n} judge${n > 1 ? 's' : ''}</small></span>`).join('');
       $('panel-modal').innerHTML = `
         <div class="pm-bg" id="pm-bg"><div class="pm">
           <div class="sheet-top" style="margin-bottom:12px"><h2>Team ${team}</h2><button class="cancel" id="pm-close">Close</button></div>
           <div class="pcard"><h3>Average by category</h3>
             ${cats.map(c => `<div class="meter"><span class="lbl">${c.label}</span><span class="trk"><i style="width:${c.v / MAX_POINTS * 100}%"></i></span><span class="v">${c.v.toFixed(1)}</span></div>`).join('')}
+          </div>
+          <div class="pcard"><h3>Quick notes</h3>
+            ${keepNotes.length || workNotes.length
+              ? (keepNotes.length ? `<div class="ngroup keep">Keep doing</div><div class="nlist">${noteChips(keepNotes, 'keep')}</div>` : '') +
+                (workNotes.length ? `<div class="ngroup work">Work on</div><div class="nlist">${noteChips(workNotes, 'work')}</div>` : '')
+              : '<p style="margin:0">No quick notes yet.</p>'}
           </div>
           <div class="pcard"><h3>Judge comments</h3>
             ${worked.length || improve.length
