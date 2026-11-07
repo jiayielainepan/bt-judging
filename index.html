@@ -87,7 +87,7 @@
     .pm .pcard { margin-bottom: 12px; }
     .pm h3 { font-size: 14px; margin: 0 0 10px; }
     .meter { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 6px 0; }
-    .meter .lbl { width: 84px; flex: none; }
+    .meter .lbl { width: 140px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .meter .trk { flex: 1; height: 8px; background: #efede7; border-radius: 9px; overflow: hidden; }
     .meter .trk i { display: block; height: 100%; background: var(--accent); }
     .meter .v { width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
@@ -223,6 +223,31 @@
     .status.standout { background: #e3f4ea; color: #18794e; }
     .status.solid { background: #fff4d6; color: #9a6700; }
     .status.needs { background: #fdeee3; color: #b54708; }
+    main.mid { max-width: 600px; }
+    .view-tabs button { padding: 6px 12px; }
+    /* Admin */
+    .acard { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+    .acard + .acard { margin-top: 14px; }
+    .acard h2 { font-size: 17px; margin: 0; }
+    .asub { font-size: 13.5px; color: var(--muted); margin: 4px 0 12px; }
+    .erow { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+    .erow:last-of-type { border-bottom: none; }
+    .erow.two { flex-wrap: wrap; row-gap: 6px; }
+    .erow input { flex: 1 1 0; min-width: 0; padding: 9px 11px; font-size: 15px; border-radius: 10px; }
+    .erow .line2 { flex-basis: 100%; display: flex; align-items: center; gap: 6px; padding-left: 38px; }
+    .pos { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: var(--accent-soft); color: var(--accent); flex: none; }
+    .pts { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-right: auto; }
+    .pts input { width: 60px; flex: none; text-align: center; }
+    .icon { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); font-size: 14px; flex: none; }
+    .icon:hover:not(:disabled) { background: #efede7; color: var(--ink); }
+    .icon:disabled { opacity: .25; cursor: default; }
+    .icon.del:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); }
+    .add-line { width: 100%; margin-top: 10px; padding: 11px; border-radius: 12px; border: 1.5px dashed #cfcac0; color: var(--accent); font-weight: 600; }
+    .add-line:hover { background: var(--accent-soft); border-color: var(--accent); }
+    .totalnote { font-size: 13px; color: var(--muted); margin-top: 10px; }
+    .warnnote { background: #fff4d6; border: 1px solid #f1d58a; color: #7a5200; border-radius: 12px; padding: 10px 12px; font-size: 13.5px; margin-bottom: 14px; }
+    .savebar { position: sticky; bottom: 0; background: linear-gradient(transparent, var(--bg) 30%); padding: 18px 0 4px; }
+    .okmsg { color: #18794e; font-size: 14px; font-weight: 600; text-align: center; margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -231,6 +256,7 @@
     <div class="view-tabs">
       <button data-view="judge" class="on">Judge</button>
       <button data-view="panel">Panel</button>
+      <button data-view="admin">Admin</button>
     </div>
   </div></header>
 
@@ -256,13 +282,13 @@
       <p class="sync" id="sync-status"></p>
       <div class="list-head">
         <h2 id="team-count">Teams</h2>
-        <button class="plus" id="add-team-top" aria-label="Add a team" title="Add a team">+</button>
       </div>
       <div id="team-list"></div>
-      <button class="add-row" id="add-team-bottom">+ Add team</button>
     </section>
     <!-- Panel view (password protected) -->
     <section id="panel-screen" class="hidden"></section>
+    <!-- Admin view (password protected): rubric categories and teams -->
+    <section id="admin-screen" class="hidden"></section>
   </main>
 
   <div id="sheet"></div>
@@ -274,13 +300,16 @@
     // Leave it empty and scores are only saved on the judge's phone.
     const API_URL = 'https://script.google.com/macros/s/AKfycbxIwWrOpESXQMDsK5zMzfBxRyQD_zx94BDU1YyTWpLonY3jeED1eOWYungHeXe0Piy3/exec';
 
+    // ---------- Passwords (must match apps-script/Code.gs) ----------
+    const PANEL_PASSWORD = 'jam2026';    // Panel tab, and Reset all data
+    const ADMIN_PASSWORD = 'adminjam';   // Admin tab: rubric categories and teams
+
     // ---------- Settings ----------
-    const STARTING_TEAMS = 5;                 // how many teams to show at first
-    const NAME_KEY  = 'bt-judge-name';
-    const TEAMS_KEY = 'bt-team-count-v2';
-    const SCORES_KEY = 'bt-scores-v1';
-    const CATEGORIES = 5;                     // Category 1 through 5
-    const MAX_POINTS = 5;                     // each category is out of 5
+    const NAME_KEY       = 'bt-judge-name';
+    const SCORES_KEY     = 'bt-scores-v1';
+    const QUEUE_KEY      = 'bt-send-queue';
+    const CONFIG_KEY     = 'bt-config';
+    const RESET_SEEN_KEY = 'bt-reset-seen';
 
     // Gut check: judged on the pitch itself, not against other teams.
     const TIERS = [
@@ -290,7 +319,7 @@
     ];
     const tierOf = id => TIERS.find(t => t.id === id);
 
-    // Quick-tap notes: specific things a 1-5 score can't tell a team. All optional.
+    // Quick-tap notes: specific things a score can't tell a team. All optional.
     const NOTES = [
       { id: 'demo',   type: 'keep', text: 'Strong live demo' },
       { id: 'evid',   type: 'keep', text: 'Real customer evidence' },
@@ -306,22 +335,58 @@
       { id: 'nask',   type: 'work', text: 'Make the ask specific' }
     ];
 
-    // ---------- Saved on this phone ----------
+    // ---------- Helpers ----------
     function load(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
     function store(key, value) { try { localStorage.setItem(key, value); } catch (e) {} }
     function forget(key) { try { localStorage.removeItem(key); } catch (e) {} }
+    const $ = (id) => document.getElementById(id);
+    const escapeHtml = text => String(text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+    const nameKey = name => String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const avgOf = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+    const clone = x => JSON.parse(JSON.stringify(x));
 
-    let teamCount = parseInt(load(TEAMS_KEY), 10) || STARTING_TEAMS;
+    let view = 'judge';     // 'judge' | 'panel' | 'admin'
+    let draft = null;       // the scoring sheet that's open (null when closed)
 
+    // ================= RUBRIC + TEAMS (set in the Admin tab) =================
+    // Saved in the Google Sheet, so every judge's phone uses the same categories and teams.
+    // Each team and category has a permanent ID, so reordering or renaming never moves scores.
+    const DEFAULT_CONFIG = {
+      categories: [1, 2, 3, 4, 5].map(i => ({ id: String(i), name: `Category ${i}`, max: 5 })),
+      teams: [1, 2, 3, 4, 5].map(i => ({ id: String(i), name: '' })),
+      lastId: { cat: 5, team: 5 }   // IDs are never reused, even after a team or category is removed
+    };
+    const validConfig = c => !!(c && Array.isArray(c.categories) && c.categories.length && Array.isArray(c.teams) && c.teams.length);
+    let config = DEFAULT_CONFIG;
+    try { const c = JSON.parse(load(CONFIG_KEY)); if (validConfig(c)) config = c; } catch (e) {}
+
+    const cats = () => config.categories;
+    const teams = () => config.teams;
+    const maxTotal = () => cats().reduce((a, c) => a + Number(c.max), 0);
+    const teamIndex = id => teams().findIndex(t => t.id === String(id));
+    function teamLabel(id) {
+      const i = teamIndex(id);
+      if (i < 0) return 'Removed team';
+      const nm = (teams()[i].name || '').trim();
+      return `Team ${i + 1}${nm ? ': ' + nm : ''}`;
+    }
+    function totalOf(entry) { return cats().reduce((a, c) => a + (Number(entry.scores[c.id]) || 0), 0); }
+
+    function applyConfig(c) {
+      if (!validConfig(c) || JSON.stringify(c) === JSON.stringify(config)) return;
+      config = c;
+      store(CONFIG_KEY, JSON.stringify(c));
+      if (view === 'judge' && judgeName) renderTeams();
+      if (view === 'panel') { renderPanel(); if (panelTeam) openPanelTeam(panelTeam); }
+    }
+
+    // ================= JUDGE =================
     // Judges are recognized by name: entering the same name (on any phone or browser)
     // restores that judge's scores from the Google Sheet.
     // Behind the scenes each judge also gets a random ID, which the Sheet uses to tell rows apart.
-    const QUEUE_KEY  = 'bt-send-queue';
     let judgeName = '';
     let deviceId = null;    // this judge's ID for new rows
-    let allScores = {};     // this judge's scores: { "3": { tier, scores: {1: 4, ...}, notes, best, improve, savedAt, device } }
-
-    const nameKey = name => name.trim().toLowerCase().replace(/\s+/g, ' ');
+    let allScores = {};     // this judge's scores, by team ID: { tier, scores: {categoryId: points}, notes, best, improve, savedAt, device }
 
     function startJudge(name) {
       judgeName = name;
@@ -335,76 +400,18 @@
     }
     function saveAllScores() { store(`${SCORES_KEY}-name-${nameKey(judgeName)}`, JSON.stringify(allScores)); }
 
-    // If an organizer reset all data, clear anything on this phone saved before the reset.
-    const RESET_SEEN_KEY = 'bt-reset-seen';
-    function applyReset(resetAt) {
-      resetAt = Number(resetAt) || 0;
-      if (!resetAt || resetAt <= (Number(load(RESET_SEEN_KEY)) || 0)) return false;
-      store(RESET_SEEN_KEY, resetAt);
-      // Every judge's saved scores on this phone
-      try {
-        Object.keys(localStorage).filter(k => k.startsWith(SCORES_KEY + '-')).forEach(k => {
-          const saved = JSON.parse(localStorage.getItem(k) || '{}');
-          Object.keys(saved).forEach(t => { if ((saved[t].savedAt || 0) < resetAt) delete saved[t]; });
-          localStorage.setItem(k, JSON.stringify(saved));
-        });
-      } catch (e) {}
-      Object.keys(allScores).forEach(t => { if ((allScores[t].savedAt || 0) < resetAt) delete allScores[t]; });
-      queue = queue.filter(q => (q.queuedAt || 0) >= resetAt);
-      saveQueue();
-      teamCount = STARTING_TEAMS;
-      store(TEAMS_KEY, teamCount);
-      restoreNote = '';
-      if (view === 'judge' && judgeName) { renderTeams(); showSyncStatus(); }
-      return true;
+    // Reading a row from the Sheet
+    function rowTeamId(r) {
+      const id = String(r['Team ID'] || '').trim();
+      if (id) return id;
+      const m = String(r['Team'] || '').match(/\d+/);   // older rows: "Team 3"
+      return m ? m[0] : '';
     }
-
-    // Pull this judge's scores back from the Sheet and merge them with what's on this phone.
-    // For each team, whichever version was saved most recently wins.
-    let restoreNote = '';
-    async function restoreFromSheet() {
-      if (!API_URL || !judgeName) return;
-      const forName = judgeName;
-      try {
-        const res = await fetch(`${API_URL}?action=judge&name=${encodeURIComponent(forName)}&t=${Date.now()}`);
-        const out = await res.json();
-        if (!out.ok || forName !== judgeName) return;   // judge changed while loading
-        applyReset(out.resetAt);
-        const mine = (out.rows || []).filter(r => nameKey(String(r['Judge'] || '')) === nameKey(forName));
-        let restored = 0;
-        mine.forEach(r => {
-          const teamNum = parseInt(String(r['Team']).replace(/\D/g, ''), 10);
-          if (!teamNum) return;
-          const savedAt = Date.parse(r['Last updated']) || 0;
-          const local = allScores[teamNum];
-          if (local && (local.savedAt || 0) >= savedAt) return;   // phone has the newer version
-          const scores = {};
-          for (let c = 1; c <= CATEGORIES; c++) scores[c] = Number(r[`Category ${c}`]) || 0;
-          const tier = TIERS.find(t => t.label === r['Gut check']);
-          const noteIds = [r['Keep doing'], r['Work on']].join('; ').split('; ')
-            .map(text => (NOTES.find(n => n.text === text) || {}).id).filter(Boolean);
-          allScores[teamNum] = {
-            tier: tier ? tier.id : null,
-            scores: scores,
-            notes: noteIds,
-            best: String(r['What worked'] || ''),
-            improve: String(r['What to improve'] || ''),
-            savedAt: savedAt,
-            device: String(r['Device ID'] || deviceId)
-          };
-          restored++;
-          if (teamNum > teamCount) { teamCount = teamNum; store(TEAMS_KEY, teamCount); }
-        });
-        if (restored) {
-          saveAllScores();
-          restoreNote = `Welcome back! Restored ${restored} scored team${restored > 1 ? 's' : ''}.`;
-          renderTeams();
-        }
-        showSyncStatus();
-      } catch (e) {
-        restoreNote = "Couldn't check the Sheet for saved scores. Showing what's on this phone.";
-        showSyncStatus();
-      }
+    function rowScores(r) {
+      try { const s = JSON.parse(r['Scores JSON'] || ''); if (s && typeof s === 'object') return s; } catch (e) {}
+      const s = {};   // older rows: Category 1-5 columns
+      for (let c = 1; c <= 5; c++) if (r[`Category ${c}`] !== '' && r[`Category ${c}`] !== undefined) s[c] = Number(r[`Category ${c}`]) || 0;
+      return s;
     }
 
     // ---------- Sending scores to the Google Sheet ----------
@@ -412,20 +419,22 @@
     // If the Wi-Fi drops, it stays in the queue and retries automatically.
     let queue = [];
     try { queue = JSON.parse(load(QUEUE_KEY)) || []; } catch (e) { queue = []; }
-    let sending = false, lastError = false;
-
+    let sending = false;
     function saveQueue() { store(QUEUE_KEY, JSON.stringify(queue)); }
 
-    function buildPayload(teamNum, entry) {
+    function buildPayload(teamId, entry) {
       const noteText = type => NOTES.filter(n => n.type === type && entry.notes.includes(n.id)).map(n => n.text).join('; ');
-      const scores = [];
-      for (let c = 1; c <= CATEGORIES; c++) scores.push(entry.scores[c]);
+      const firstFive = cats().slice(0, 5).map(c => entry.scores[c.id] ?? '');   // readable columns in the Sheet
+      while (firstFive.length < 5) firstFive.push('');
       return {
         judge: judgeName,
-        team: `Team ${teamNum}`,
+        team: teamLabel(teamId),
+        teamId: String(teamId),
         gut: entry.tier ? tierOf(entry.tier).label : '',
-        scores: scores,
+        scores: firstFive,
         total: totalOf(entry),
+        maxTotal: maxTotal(),
+        scoresJson: JSON.stringify(entry.scores),
         keep: noteText('keep'),
         work: noteText('work'),
         best: entry.best || '',
@@ -434,11 +443,11 @@
       };
     }
 
-    function queueScore(teamNum, entry) {
+    function queueScore(teamId, entry) {
       if (!API_URL) return;
-      const payload = buildPayload(teamNum, entry);
+      const payload = buildPayload(teamId, entry);
       // If an older version of this same score is still waiting, replace it
-      queue = queue.filter(q => !(q.device === payload.device && q.team === payload.team));
+      queue = queue.filter(q => !(q.device === payload.device && String(q.teamId) === payload.teamId));
       payload.queuedAt = Date.now();
       queue.push(payload);
       saveQueue();
@@ -456,9 +465,7 @@
           if (!out.ok) throw new Error(out.error || 'Not saved');
           queue.shift();
           saveQueue();
-          lastError = false;
         } catch (err) {
-          lastError = true;
           break;   // try again later
         }
       }
@@ -466,35 +473,102 @@
       showSyncStatus();
     }
 
+    // If an organizer reset all data, clear anything on this phone saved before the reset.
+    function applyReset(resetAt) {
+      resetAt = Number(resetAt) || 0;
+      if (!resetAt || resetAt <= (Number(load(RESET_SEEN_KEY)) || 0)) return false;
+      store(RESET_SEEN_KEY, resetAt);
+      try {
+        Object.keys(localStorage).filter(k => k.startsWith(SCORES_KEY + '-')).forEach(k => {
+          const saved = JSON.parse(localStorage.getItem(k) || '{}');
+          Object.keys(saved).forEach(t => { if ((saved[t].savedAt || 0) < resetAt) delete saved[t]; });
+          localStorage.setItem(k, JSON.stringify(saved));
+        });
+      } catch (e) {}
+      Object.keys(allScores).forEach(t => { if ((allScores[t].savedAt || 0) < resetAt) delete allScores[t]; });
+      queue = queue.filter(q => (q.queuedAt || 0) >= resetAt);
+      saveQueue();
+      restoreNote = '';
+      if (view === 'judge' && judgeName) { renderTeams(); showSyncStatus(); }
+      return true;
+    }
+
+    // Pull this judge's scores (and the latest Admin settings) from the Sheet.
+    // For each team, whichever version was saved most recently wins.
+    let restoreNote = '';
+    async function restoreFromSheet() {
+      if (!API_URL || !judgeName) return;
+      const forName = judgeName;
+      try {
+        const res = await fetch(`${API_URL}?action=judge&name=${encodeURIComponent(forName)}&t=${Date.now()}`);
+        const out = await res.json();
+        if (!out.ok || forName !== judgeName) return;   // judge changed while loading
+        applyReset(out.resetAt);
+        if (out.config && !draft) applyConfig(out.config);
+        const mine = (out.rows || []).filter(r => nameKey(r['Judge']) === nameKey(forName));
+        let restored = 0;
+        mine.forEach(r => {
+          const tid = rowTeamId(r);
+          if (!tid) return;
+          const savedAt = Date.parse(r['Last updated']) || 0;
+          const local = allScores[tid];
+          if (local && (local.savedAt || 0) >= savedAt) return;   // phone has the newer version
+          const tier = TIERS.find(t => t.label === r['Gut check']);
+          const noteIds = [r['Keep doing'], r['Work on']].join('; ').split('; ')
+            .map(text => (NOTES.find(n => n.text === text) || {}).id).filter(Boolean);
+          allScores[tid] = {
+            tier: tier ? tier.id : null,
+            scores: rowScores(r),
+            notes: noteIds,
+            best: String(r['What worked'] || ''),
+            improve: String(r['What to improve'] || ''),
+            savedAt: savedAt,
+            device: String(r['Device ID'] || deviceId)
+          };
+          restored++;
+        });
+        if (restored) {
+          saveAllScores();
+          restoreNote = `Welcome back! Restored ${restored} scored team${restored > 1 ? 's' : ''}.`;
+          if (view === 'judge') renderTeams();
+        }
+        showSyncStatus();
+      } catch (e) {
+        restoreNote = "Couldn't check the Sheet for saved scores. Showing what's on this phone.";
+        showSyncStatus();
+      }
+    }
+
+    // Load the Admin settings before anyone has entered a name
+    async function fetchConfig() {
+      if (!API_URL) return;
+      try {
+        const out = await (await fetch(`${API_URL}?t=${Date.now()}`)).json();
+        if (out.ok) { applyReset(out.resetAt); if (out.config) applyConfig(out.config); }
+      } catch (e) {}
+    }
+
     function showSyncStatus() {
       const el = $('sync-status');
       if (!el) return;
       if (!API_URL) { el.className = 'sync'; el.textContent = 'Not connected to the Google Sheet yet. Scores stay on this phone.'; return; }
-      const mine = queue.filter(q => nameKey(q.judge || '') === nameKey(judgeName)).length;
+      const mine = queue.filter(q => nameKey(q.judge) === nameKey(judgeName)).length;
       if (sending && mine) { el.className = 'sync'; el.textContent = 'Sending scores…'; }
       else if (mine) { el.className = 'sync warn'; el.textContent = `⚠ ${mine} score${mine > 1 ? 's' : ''} not sent yet. Will retry automatically.`; }
       else if (restoreNote) { el.className = restoreNote.startsWith('Welcome') ? 'sync ok' : 'sync warn'; el.textContent = restoreNote; }
-      else if (Object.keys(allScores).length) { el.className = 'sync ok'; el.textContent = '✓ All your scores are saved'; }
+      else if (Object.keys(allScores).some(id => teamIndex(id) >= 0)) { el.className = 'sync ok'; el.textContent = '✓ All your scores are saved'; }
       else { el.className = 'sync'; el.textContent = ''; }
     }
 
     setInterval(sendQueue, 10000);                 // retry every 10 seconds
-    setInterval(() => { if (view === 'judge' && judgeName && !draft) restoreFromSheet(); }, 30000);  // pick up resets
     window.addEventListener('online', sendQueue);  // and as soon as Wi-Fi comes back
+    // Every 30 seconds: pick up Admin changes, resets, and this judge's scores from other devices
+    setInterval(() => { if (view === 'judge' && judgeName && !draft) restoreFromSheet(); else if (view === 'judge' && !judgeName) fetchConfig(); }, 30000);
 
-    function totalOf(entry) {
-      return Object.values(entry.scores).reduce((sum, v) => sum + v, 0);
-    }
-
-    // The scoring sheet that's currently open (null when closed)
-    let draft = null;
-
-    // ---------- Elements ----------
-    const $ = (id) => document.getElementById(id);
+    // ---------- Judge screens ----------
     const nameScreen = $('name-screen'), homeScreen = $('home-screen');
     const nameForm = $('name-form'), nameInput = $('name-input'), continueBtn = $('continue-btn');
 
-    // ---------- Screens ----------
     function showNameScreen() {
       homeScreen.classList.add('hidden');
       nameScreen.classList.remove('hidden');
@@ -512,49 +586,26 @@
     }
 
     function renderTeams() {
-      $('team-count').textContent = `Teams (${teamCount})`;
-      let html = '';
-      for (let i = 1; i <= teamCount; i++) {
-        // Only the last team can be removed, so the numbering never has gaps.
-        const entry = allScores[i];
-        const removable = i === teamCount && teamCount > 1 && !entry;
+      $('team-count').textContent = `Teams (${teams().length})`;
+      $('team-list').innerHTML = teams().map((t, i) => {
+        const entry = allScores[t.id];
         const status = entry
-          ? `<span class="status ${entry.tier || 'done'}">${entry.tier ? tierOf(entry.tier).label + ' · ' : ''}${totalOf(entry)}/${CATEGORIES * MAX_POINTS}</span>`
+          ? `<span class="status ${entry.tier || 'done'}">${entry.tier ? tierOf(entry.tier).label + ' · ' : ''}${totalOf(entry)}/${maxTotal()}</span>`
           : `<span class="status">Not judged</span>`;
-        html += `
-          <div class="row-wrap" style="display:flex;align-items:center;gap:6px">
-            <button class="team" data-team="${i}">
-              <span class="num">${i}</span>
-              <span class="info"><b>Team ${i}</b></span>
-              ${status}
-            </button>
-            ${removable ? `<button class="remove" data-remove="${i}" aria-label="Remove Team ${i}" title="Remove Team ${i}">×</button>` : (teamCount > 1 ? '<span style="width:32px;flex:none"></span>' : '')}
-          </div>`;
-      }
-      $('team-list').innerHTML = html;
-    }
-
-    function addTeam() {
-      teamCount++;
-      store(TEAMS_KEY, teamCount);
-      renderTeams();
-      // Scroll the new team into view
-      const last = document.querySelector(`[data-team="${teamCount}"]`);
-      if (last) last.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-
-    function removeLastTeam() {
-      if (teamCount <= 1) return;
-      teamCount--;
-      store(TEAMS_KEY, teamCount);
-      renderTeams();
+        return `
+          <button class="team" data-team="${escapeHtml(t.id)}">
+            <span class="num">${i + 1}</span>
+            <span class="info"><b>${escapeHtml(teamLabel(t.id))}</b></span>
+            ${status}
+          </button>`;
+      }).join('');
     }
 
     // ---------- Scoring sheet ----------
-    function openTeam(n) {
-      const saved = allScores[n];
+    function openTeam(id) {
+      const saved = allScores[id];
       draft = {
-        team: n,
+        team: id,
         scores: saved ? { ...saved.scores } : {},
         tier: saved ? (saved.tier || null) : null,
         notes: saved && saved.notes ? [...saved.notes] : [],
@@ -568,36 +619,36 @@
       if (!draft) { $('sheet').innerHTML = ''; return; }
       const oldSheet = document.querySelector('.sheet');
       const keepScroll = oldSheet ? oldSheet.scrollTop : 0;
-      const scoredCount = Object.keys(draft.scores).length;
-      const ready = scoredCount === CATEGORIES && !!draft.tier;
+      const left = cats().filter(c => !draft.scores[c.id]).length;
+      const ready = left === 0 && !!draft.tier;
       const missing = [];
+      if (left) missing.push(`${left} more ${left === 1 ? 'category' : 'categories'}`);
       if (!draft.tier) missing.push('gut check');
-      if (scoredCount < CATEGORIES) missing.push(`${CATEGORIES - scoredCount} more ${CATEGORIES - scoredCount === 1 ? 'category' : 'categories'}`);
-      const total = Object.values(draft.scores).reduce((a, b) => a + b, 0);
+      const total = totalOf(draft);
+      const label = teamLabel(draft.team);
 
-      let cats = '';
-      for (let c = 1; c <= CATEGORIES; c++) {
+      const catHtml = cats().map(c => {
         let buttons = '';
-        for (let v = 1; v <= MAX_POINTS; v++) {
-          const on = draft.scores[c] === v ? 'on' : '';
-          buttons += `<button class="${on}" data-cat="${c}" data-val="${v}" aria-label="Category ${c}: ${v} points">${v}</button>`;
+        for (let v = 1; v <= c.max; v++) {
+          const on = Number(draft.scores[c.id]) === v ? 'on' : '';
+          buttons += `<button class="${on}" data-cat="${escapeHtml(c.id)}" data-val="${v}" aria-label="${escapeHtml(c.name)}: ${v} points">${v}</button>`;
         }
-        cats += `
+        return `
           <div class="cat">
-            <div class="cat-head">Category ${c} <span>out of ${MAX_POINTS}</span></div>
-            <div class="scale">${buttons}</div>
+            <div class="cat-head">${escapeHtml(c.name)} <span>out of ${c.max}</span></div>
+            <div class="scale" style="grid-template-columns:repeat(${Math.min(c.max, 5)},1fr)">${buttons}</div>
           </div>`;
-      }
+      }).join('');
 
       $('sheet').innerHTML = `
         <div class="sheet-bg" id="sheet-bg">
           <div class="sheet">
             <div class="sheet-top">
-              <span class="num">${draft.team}</span>
-              <h2>Team ${draft.team}</h2>
+              <span class="num">${teamIndex(draft.team) + 1}</span>
+              <h2>${escapeHtml(label)}</h2>
               <button class="cancel" id="close-sheet">Cancel</button>
             </div>
-            ${cats}
+            ${catHtml}
             <div class="cat">
               <div class="cat-head">Feedback for the team <span>all optional</span></div>
               <div class="group keep">Keep doing</div>
@@ -613,10 +664,10 @@
               <textarea id="improve" maxlength="250" placeholder="You could consider improving…">${escapeHtml(draft.improve)}</textarea>
             </div>
             <div class="cat gut">
-              <p class="gut-q">What's your gut feeling about Team ${draft.team}?</p>
+              <p class="gut-q">What's your gut feeling about ${escapeHtml(label)}?</p>
               <div class="tiers">${TIERS.map(t => `<button class="tier ${t.id} ${draft.tier === t.id ? 'on' : ''}" data-tier="${t.id}"><b>${t.label}</b><span>${t.desc}</span></button>`).join('')}</div>
             </div>
-            <div class="total"><span>Total</span><b>${total} / ${CATEGORIES * MAX_POINTS}</b></div>
+            <div class="total"><span>Total</span><b>${total} / ${maxTotal()}</b></div>
             <button class="primary" id="save-score" ${ready ? '' : 'disabled'}>
               ${ready ? 'Save' : `To save, add: ${missing.join(' and ')}`}
             </button>
@@ -635,7 +686,7 @@
     }
 
     function saveScore() {
-      if (!draft || Object.keys(draft.scores).length !== CATEGORIES || !draft.tier) return;
+      if (!draft || cats().some(c => !draft.scores[c.id]) || !draft.tier) return;
       const previous = allScores[draft.team];
       allScores[draft.team] = {
         savedAt: Date.now(),
@@ -654,122 +705,32 @@
       renderTeams();
     }
 
-    function escapeHtml(text) {
-      return String(text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-    }
-
     function closeSheet() { draft = null; renderSheet(); }
 
-    // ---------- Events ----------
-    // Keep the comment in the draft as they type
-    document.addEventListener('input', (e) => {
-      if (!draft) return;
-      if (e.target.id === 'best') draft.best = e.target.value;
-      if (e.target.id === 'improve') draft.improve = e.target.value;
-    });
-
-    nameInput.addEventListener('input', () => {
-      continueBtn.disabled = nameInput.value.trim().length < 2;
-    });
-
-    nameForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const name = nameInput.value.trim();
-      if (name.length < 2) return;
-      store(NAME_KEY, name);
-      startJudge(name);
-      restoreNote = API_URL ? 'Checking for your saved scores…' : '';
-      showHome(name);
-      restoreFromSheet().then(() => { if (restoreNote === 'Checking for your saved scores…') { restoreNote = ''; showSyncStatus(); } });
-    });
-
-    $('change-name').addEventListener('click', () => {
-      // Switch judges. The previous judge's scores stay saved (on this phone and in the Sheet),
-      // and come back when they enter their name again.
-      forget(NAME_KEY);
-      judgeName = ''; allScores = {}; restoreNote = '';
-      showNameScreen();
-    });
-    $('add-team-top').addEventListener('click', addTeam);
-    $('add-team-bottom').addEventListener('click', addTeam);
-
-    document.addEventListener('click', (e) => {
-      const team = e.target.closest('[data-team]');
-      const remove = e.target.closest('[data-remove]');
-      const point = e.target.closest('[data-cat]');
-      const note = e.target.closest('[data-note]');
-      const tierBtn = e.target.closest('[data-tier]');
-      if (tierBtn && draft) {
-        draft.tier = tierBtn.dataset.tier;
-        renderSheet();
-        return;
-      }
-      if (note && draft) {
-        const id = note.dataset.note;
-        draft.notes = draft.notes.includes(id) ? draft.notes.filter(x => x !== id) : [...draft.notes, id];
-        renderSheet();
-        return;
-      }
-      if (point && draft) {
-        draft.scores[point.dataset.cat] = Number(point.dataset.val);
-        renderSheet();
-      }
-      else if (e.target.closest('#save-score')) saveScore();
-      else if (remove) removeLastTeam();
-      else if (team) openTeam(Number(team.dataset.team));
-      else if (e.target.id === 'close-sheet') closeSheet();
-    });
-
-    // ================= PANEL VIEW =================
-    // Shows every judge's scores from the Google Sheet, behind a simple password.
-    // Change the password here. Share it with judges once everyone is done scoring.
-    const PANEL_PASSWORD = 'jam2026';
+    // ================= PANEL =================
+    // Every judge's scores from the Google Sheet, behind the panel password.
     const PANEL_KEY = 'bt-panel-unlocked';
     const panelUnlocked = () => load(PANEL_KEY) === PANEL_PASSWORD;
     const TIER_CLASS = { 'Standout': 'standout', 'Solid': 'solid', 'Needs work': 'needs' };
-    const TIER_VALUE = { 'Standout': 3, 'Solid': 2, 'Needs work': 1 };
-    let view = 'judge';
     let panelRows = null, panelUpdated = 0, panelError = '', panelTeam = null, panelLoading = false;
-    const avgOf = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
-
-    function setView(v) {
-      view = v;
-      document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === v));
-      document.querySelector('main').classList.toggle('wide', v === 'panel');
-      if (v === 'panel') {
-        nameScreen.classList.add('hidden');
-        homeScreen.classList.add('hidden');
-        $('panel-screen').classList.remove('hidden');
-        renderPanel();
-        loadPanel();
-      } else {
-        $('panel-screen').classList.add('hidden');
-        closePanelTeam();
-        const n = load(NAME_KEY);
-        if (n) { if (!judgeName) startJudge(n); showHome(n); } else showNameScreen();
-      }
-    }
 
     async function loadPanel() {
       if (!API_URL || !panelUnlocked() || panelLoading) return;
       panelLoading = true;
       try {
-        const res = await fetch(`${API_URL}?t=${Date.now()}`);
-        const out = await res.json();
+        const out = await (await fetch(`${API_URL}?t=${Date.now()}`)).json();
         if (!out.ok) {
           if (!panelRows) panelError = "Couldn't load scores.";
         } else {
           applyReset(out.resetAt);
+          if (out.config) applyConfig(out.config);
           panelRows = out.rows || []; panelUpdated = Date.now(); panelError = '';
         }
       } catch (e) {
         if (!panelRows) panelError = "Couldn't reach the Google Sheet. Check the connection and try again.";
       }
       panelLoading = false;
-      if (view === 'panel') {
-        renderPanel();
-        if (panelTeam) openPanelTeam(panelTeam);
-      }
+      if (view === 'panel') { renderPanel(); if (panelTeam) openPanelTeam(panelTeam); }
     }
     setInterval(() => { if (view === 'panel') loadPanel(); }, 10000);   // live: refresh every 10 seconds
 
@@ -777,17 +738,16 @@
     function panelEntries() {
       const latest = {};
       (panelRows || []).forEach(r => {
-        const jk = nameKey(String(r['Judge'] || ''));
-        const team = parseInt(String(r['Team']).replace(/\D/g, ''), 10);
-        if (!jk || !team) return;
+        const jk = nameKey(r['Judge']);
+        const team = rowTeamId(r);
+        if (!jk || !team || teamIndex(team) < 0) return;   // skip teams removed in Admin
         const ts = Date.parse(r['Last updated']) || 0;
         const k = jk + '|' + team;
         if (latest[k] && latest[k].ts > ts) return;
-        const scores = [];
-        for (let c = 1; c <= CATEGORIES; c++) scores.push(Number(r[`Category ${c}`]) || 0);
+        const scores = rowScores(r);
         latest[k] = {
           jk, judge: String(r['Judge']).trim(), team, ts, gut: String(r['Gut check'] || ''), scores,
-          total: scores.reduce((a, b) => a + b, 0),
+          total: totalOf({ scores }),
           keep: String(r['Keep doing'] || ''), work: String(r['Work on'] || ''),
           best: String(r['What worked'] || ''), improve: String(r['What to improve'] || '')
         };
@@ -802,8 +762,6 @@
         const j = judges.find(x => x.jk === e.jk);
         if (j) j.name = e.judge; else judges.push({ jk: e.jk, name: e.judge });
       });
-      const teams = [...new Set(entries.map(e => e.team))].sort((a, b) => a - b);
-      const totalTeams = Math.max(teamCount, ...teams, 1);
       // z-score: how far above/below that judge's own average a team scored
       judges.forEach(j => {
         const mine = entries.filter(e => e.jk === j.jk);
@@ -813,7 +771,8 @@
         j.byTeam = {};
         mine.forEach(e => j.byTeam[e.team] = { total: e.total, gut: e.gut, z: sd > 0 ? (e.total - m) / sd : 0 });
       });
-      const rows = teams.map(t => {
+      const scoredTeams = teams().map(t => t.id).filter(id => entries.some(e => e.team === id));
+      const rows = scoredTeams.map(t => {
         const js = judges.filter(j => j.byTeam[t]);
         return {
           team: t,
@@ -823,24 +782,28 @@
           votes: js.length
         };
       }).sort((a, b) => b.z - a.z);
-      return { entries, judges, rows, totalTeams };
+      return { entries, judges, rows, totalTeams: teams().length };
+    }
+
+    function lockScreen(title, text, formId, inputId, error) {
+      return `
+        <div class="card lockbox">
+          <h1>${title}</h1>
+          <p>${text}</p>
+          <form id="${formId}">
+            <label for="${inputId}">Password</label>
+            <input id="${inputId}" type="password" autocomplete="off">
+            <button class="primary" type="submit">Unlock</button>
+          </form>
+          ${error ? `<p class="err">${escapeHtml(error)}</p>` : ''}
+        </div>`;
     }
 
     function renderPanel() {
       const el = $('panel-screen');
       if (!API_URL) { el.innerHTML = `<div class="card lockbox"><h1>Panel</h1><p>The app isn't connected to the Google Sheet yet.</p></div>`; return; }
       if (!panelUnlocked()) {
-        el.innerHTML = `
-          <div class="card lockbox">
-            <h1>Panel</h1>
-            <p>The panel is password protected. Organizers will share the password once judging is done.</p>
-            <form id="unlock-form">
-              <label for="panel-pass">Password</label>
-              <input id="panel-pass" type="password" autocomplete="off">
-              <button class="primary" type="submit">Unlock</button>
-            </form>
-            ${panelError ? `<p class="err">${escapeHtml(panelError)}</p>` : ''}
-          </div>`;
+        el.innerHTML = lockScreen('Panel', 'The panel is password protected. Organizers will share the password once judging is done.', 'unlock-form', 'panel-pass', panelError);
         return;
       }
       if (!panelRows) { el.innerHTML = `<div class="card lockbox"><p style="margin:0">${panelError ? escapeHtml(panelError) : 'Loading scores…'}</p></div>`; return; }
@@ -851,9 +814,9 @@
           <thead><tr><th>#</th><th>Team</th>${D.judges.map(j => `<th class="c">${escapeHtml(j.name)}</th>`).join('')}
             <th class="c">Avg total</th><th class="c">Z-score</th><th class="c">Standout votes</th></tr></thead>
           <tbody>${D.rows.map((x, i) => `
-            <tr data-pteam="${x.team}">
+            <tr data-pteam="${escapeHtml(x.team)}">
               <td><b>${i + 1}</b></td>
-              <td><span class="tlink">Team ${x.team}</span></td>
+              <td><span class="tlink">${escapeHtml(teamLabel(x.team))}</span></td>
               ${D.judges.map(j => { const s = j.byTeam[x.team];
                   return `<td class="c">${s ? `<span class="tt ${TIER_CLASS[s.gut] || ''}" title="${escapeHtml(j.name)}: ${escapeHtml(s.gut)}">${s.total}</span>` : '<span class="tt none">–</span>'}</td>`; }).join('')}
               <td class="c">${x.raw.toFixed(1)}</td>
@@ -868,7 +831,7 @@
           <span class="live" id="panel-live"><span class="dot"></span><span id="panel-updated"></span></span>
           <button class="lock-btn" id="lock-panel">Lock panel</button>
         </div>
-        <div class="jchips">${D.judges.map(j => `<span class="jchip"><b>${escapeHtml(j.name)}</b> ${j.n}/${D.totalTeams} teams · avg ${j.avg.toFixed(1)}/${CATEGORIES * MAX_POINTS}<span class="jbar"><i style="width:${Math.min(100, j.n / D.totalTeams * 100)}%"></i></span></span>`).join('')}</div>
+        <div class="jchips">${D.judges.map(j => `<span class="jchip"><b>${escapeHtml(j.name)}</b> ${j.n}/${D.totalTeams} teams · avg ${j.avg.toFixed(1)}/${maxTotal()}<span class="jbar"><i style="width:${Math.min(100, j.n / D.totalTeams * 100)}%"></i></span></span>`).join('')}</div>
         <div class="pcard"><h2>Live ranking</h2>${table}</div>
         <div class="reset-row"><button class="reset-btn" id="reset-open">Reset all data</button></div>`;
       updateLive();
@@ -886,8 +849,10 @@
       panelTeam = team;
       const D = panelStats();
       const rows = D.entries.filter(e => e.team === team);
-      const cats = [];
-      for (let c = 0; c < CATEGORIES; c++) cats.push({ label: `Category ${c + 1}`, v: avgOf(rows.map(e => e.scores[c])) });
+      const catAvgs = cats().map(c => {
+        const vals = rows.map(e => e.scores[c.id]).filter(v => v !== undefined && v !== '' && v !== null).map(Number);
+        return { name: c.name, max: Number(c.max), v: vals.length ? avgOf(vals) : null };
+      });
       const worked = rows.filter(e => e.best.trim()), improve = rows.filter(e => e.improve.trim());
       // Quick-tap notes, with how many judges tapped each one
       const tally = field => {
@@ -896,18 +861,18 @@
         return Object.entries(count).sort((a, b) => b[1] - a[1]);
       };
       const keepNotes = tally('keep'), workNotes = tally('work');
-      const noteChips = (list, type) => list.map(([t, n]) =>
+      const noteList = (list, type) => list.map(([t, n]) =>
         `<span class="nchip ${type}">${type === 'keep' ? '+' : '−'} ${escapeHtml(t)}<small>${n} judge${n > 1 ? 's' : ''}</small></span>`).join('');
       $('panel-modal').innerHTML = `
         <div class="pm-bg" id="pm-bg"><div class="pm">
-          <div class="sheet-top" style="margin-bottom:12px"><h2>Team ${team}</h2><button class="cancel" id="pm-close">Close</button></div>
+          <div class="sheet-top" style="margin-bottom:12px"><h2>${escapeHtml(teamLabel(team))}</h2><button class="cancel" id="pm-close">Close</button></div>
           <div class="pcard"><h3>Average by category</h3>
-            ${cats.map(c => `<div class="meter"><span class="lbl">${c.label}</span><span class="trk"><i style="width:${c.v / MAX_POINTS * 100}%"></i></span><span class="v">${c.v.toFixed(1)}</span></div>`).join('')}
+            ${catAvgs.map(c => `<div class="meter"><span class="lbl" title="${escapeHtml(c.name)}">${escapeHtml(c.name)}</span><span class="trk"><i style="width:${c.v === null ? 0 : c.v / c.max * 100}%"></i></span><span class="v">${c.v === null ? '–' : c.v.toFixed(1)}</span></div>`).join('')}
           </div>
           <div class="pcard"><h3>Quick notes</h3>
             ${keepNotes.length || workNotes.length
-              ? (keepNotes.length ? `<div class="ngroup keep">Keep doing</div><div class="nlist">${noteChips(keepNotes, 'keep')}</div>` : '') +
-                (workNotes.length ? `<div class="ngroup work">Work on</div><div class="nlist">${noteChips(workNotes, 'work')}</div>` : '')
+              ? (keepNotes.length ? `<div class="ngroup keep">Keep doing</div><div class="nlist">${noteList(keepNotes, 'keep')}</div>` : '') +
+                (workNotes.length ? `<div class="ngroup work">Work on</div><div class="nlist">${noteList(workNotes, 'work')}</div>` : '')
               : '<p style="margin:0">No quick notes yet.</p>'}
           </div>
           <div class="pcard"><h3>Judge comments</h3>
@@ -920,13 +885,14 @@
     }
     function closePanelTeam() { panelTeam = null; $('panel-modal').innerHTML = ''; }
 
+    // ---------- Reset all data (Panel) ----------
     let resetError = '', resetting = false;
     function openReset() {
       panelTeam = null;
       $('panel-modal').innerHTML = `
         <div class="pm-bg" id="pm-bg"><div class="pm" style="max-width:420px">
           <div class="sheet-top" style="margin-bottom:8px"><h2>Reset all data?</h2><button class="cancel" id="pm-close">Cancel</button></div>
-          <p style="margin:0 0 14px">This deletes <b>every judge's scores and comments</b> from the Google Sheet and from judges' phones, and resets the team list to Team 1–${STARTING_TEAMS}. A backup copy of the current scores is saved as a new tab in the Sheet.</p>
+          <p style="margin:0 0 14px">This deletes <b>every judge's scores and comments</b> from the Google Sheet and from judges' phones. Your rubric and teams from the Admin tab stay. A backup copy of the current scores is saved as a new tab in the Sheet.</p>
           <label for="reset-confirm">Type RESET to confirm</label>
           <input id="reset-confirm" type="text" autocomplete="off" autocapitalize="characters">
           <button class="primary danger" id="reset-go" disabled>${resetting ? 'Resetting…' : 'Delete all data'}</button>
@@ -937,8 +903,7 @@
       if (resetting) return;
       resetting = true; resetError = ''; openReset();
       try {
-        const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'reset', key: PANEL_PASSWORD }) });
-        const out = await res.json();
+        const out = await (await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'reset', key: PANEL_PASSWORD }) })).json();
         if (!out.ok) throw new Error(out.error === 'wrong-password'
           ? 'The Google Sheet script has a different password. Make sure PANEL_PASSWORD matches in both.'
           : (out.error || 'Reset failed'));
@@ -956,35 +921,239 @@
       }
     }
 
-    document.addEventListener('submit', (e) => {
-      if (e.target.id !== 'unlock-form') return;
-      e.preventDefault();
-      const pass = $('panel-pass').value.trim();
-      if (!pass) return;
-      if (pass !== PANEL_PASSWORD) { panelError = "That password isn't right."; renderPanel(); return; }
-      store(PANEL_KEY, pass);
-      panelError = '';
-      renderPanel();
-      loadPanel();
-    });
+    // ================= ADMIN =================
+    // Rubric categories (name + points) and teams (name + order). Saved to the Google Sheet.
+    const ADMIN_KEY = 'bt-admin-unlocked';
+    const adminUnlocked = () => load(ADMIN_KEY) === ADMIN_PASSWORD;
+    let adminEdit = null, adminMsg = '', adminErr = '', adminSaving = false, adminScoreCount = 0, adminUnlockErr = '';
+    const adminDirty = () => !!adminEdit && JSON.stringify(adminEdit) !== JSON.stringify(config);
+    function nextId(kind) {
+      const list = kind === 'cat' ? adminEdit.categories : adminEdit.teams;
+      adminEdit.lastId = adminEdit.lastId || { cat: 5, team: 5 };
+      const n = Math.max(Number(adminEdit.lastId[kind]) || 0, ...list.map(x => Number(x.id) || 0)) + 1;
+      adminEdit.lastId[kind] = n;
+      return String(n);
+    }
+
+    async function loadAdmin() {
+      if (!API_URL || !adminUnlocked()) return;
+      try {
+        const out = await (await fetch(`${API_URL}?t=${Date.now()}`)).json();
+        if (out.ok) {
+          applyReset(out.resetAt);
+          if (out.config) applyConfig(out.config);
+          adminScoreCount = (out.rows || []).length;
+          if (!adminDirty()) adminEdit = clone(config);
+        }
+      } catch (e) {}
+      if (view === 'admin') renderAdmin();
+    }
+
+    function renderAdmin() {
+      const el = $('admin-screen');
+      if (!adminUnlocked()) {
+        el.innerHTML = lockScreen('Admin', 'Set up the rubric and teams. Organizers only.', 'admin-form', 'admin-pass', adminUnlockErr);
+        return;
+      }
+      if (!adminEdit) adminEdit = clone(config);
+      const E = adminEdit;
+      const total = E.categories.reduce((a, c) => a + (Number(c.max) || 0), 0);
+      el.innerHTML = `
+        <div class="ptop"><button class="lock-btn" id="lock-admin">Lock admin</button></div>
+        ${adminScoreCount ? `<div class="warnnote">Judges have already given ${adminScoreCount} score${adminScoreCount > 1 ? 's' : ''}. Renaming is fine, but changing points, removing categories or reordering teams now can make totals hard to compare and confuse judges.</div>` : ''}
+        <div class="acard">
+          <h2>Rubric categories</h2>
+          <div class="asub">Name each category and set how many points it's worth.</div>
+          ${E.categories.map((c, i) => `
+            <div class="erow two">
+              <span class="pos">${i + 1}</span>
+              <input class="field" data-cat-name="${i}" value="${escapeHtml(c.name)}" placeholder="Category name" aria-label="Category ${i + 1} name" maxlength="60">
+              <button class="icon del" data-adel="cat:${i}" ${E.categories.length === 1 ? 'disabled' : ''} title="Remove category">✕</button>
+              <div class="line2">
+                <span class="pts">out of <input class="field" type="number" inputmode="numeric" min="1" max="10" data-cat-max="${i}" value="${c.max}" aria-label="Points for category ${i + 1}"> points</span>
+                <button class="icon" data-amove="cat:${i}:-1" ${i === 0 ? 'disabled' : ''} title="Move up">▲</button>
+                <button class="icon" data-amove="cat:${i}:1" ${i === E.categories.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
+              </div>
+            </div>`).join('')}
+          <button class="add-line" id="add-cat">+ Add category</button>
+          <div class="totalnote">Total possible: <b>${total} points</b></div>
+        </div>
+        <div class="acard">
+          <h2>Teams</h2>
+          <div class="asub">In presenting order. Team names are optional, e.g. a code name like "Botties".</div>
+          ${E.teams.map((t, i) => `
+            <div class="erow">
+              <span class="pos">${i + 1}</span>
+              <input class="field" data-team-name="${i}" value="${escapeHtml(t.name)}" placeholder="Team ${i + 1} name (optional)" aria-label="Team ${i + 1} name" maxlength="40">
+              <button class="icon" data-amove="team:${i}:-1" ${i === 0 ? 'disabled' : ''} title="Move up">▲</button>
+              <button class="icon" data-amove="team:${i}:1" ${i === E.teams.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
+              <button class="icon del" data-adel="team:${i}" ${E.teams.length === 1 ? 'disabled' : ''} title="Remove team">✕</button>
+            </div>`).join('')}
+          <button class="add-line" id="add-team">+ Add team</button>
+        </div>
+        <div class="savebar">
+          <button class="primary" id="admin-save" ${adminDirty() && !adminSaving ? '' : 'disabled'}>${adminSaving ? 'Saving…' : adminDirty() ? 'Save changes' : 'No changes to save'}</button>
+          ${adminMsg ? `<div class="okmsg">${escapeHtml(adminMsg)}</div>` : ''}
+          ${adminErr ? `<p class="err" style="text-align:center">${escapeHtml(adminErr)}</p>` : ''}
+        </div>`;
+    }
+
+    function updateAdminSave() {
+      const b = $('admin-save'); if (!b) return;
+      b.disabled = !adminDirty() || adminSaving;
+      b.textContent = adminSaving ? 'Saving…' : adminDirty() ? 'Save changes' : 'No changes to save';
+    }
+
+    async function saveAdmin() {
+      if (!adminDirty() || adminSaving) return;
+      const E = clone(adminEdit);
+      E.categories.forEach((c, i) => { c.name = c.name.trim() || `Category ${i + 1}`; c.max = Math.max(1, Math.min(10, parseInt(c.max, 10) || 5)); });
+      E.teams.forEach(t => { t.name = (t.name || '').trim(); });
+      adminSaving = true; adminErr = ''; adminMsg = ''; renderAdmin();
+      try {
+        const out = await (await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'config', key: ADMIN_PASSWORD, config: E }) })).json();
+        if (!out.ok) throw new Error(out.error === 'wrong-password' ? 'The Google Sheet script has a different admin password. Make sure ADMIN_PASSWORD matches in both.' : 'save-failed');
+        applyConfig(E);
+        adminEdit = clone(E);
+        adminMsg = '✓ Saved. Judges will see the changes within 30 seconds.';
+      } catch (e) {
+        adminErr = /password/.test(e.message) ? e.message
+          : "Couldn't save. Make sure the updated Google Sheet script is deployed (new version).";
+      }
+      adminSaving = false;
+      renderAdmin();
+    }
+
+    // ================= SWITCHING TABS =================
+    function setView(v) {
+      view = v;
+      document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+      const main = document.querySelector('main');
+      main.classList.toggle('wide', v === 'panel');
+      main.classList.toggle('mid', v === 'admin');
+      [nameScreen, homeScreen, $('panel-screen'), $('admin-screen')].forEach(x => x.classList.add('hidden'));
+      closePanelTeam();
+      if (v === 'panel') {
+        $('panel-screen').classList.remove('hidden');
+        renderPanel();
+        loadPanel();
+      } else if (v === 'admin') {
+        $('admin-screen').classList.remove('hidden');
+        adminMsg = ''; adminErr = '';
+        if (!adminDirty()) adminEdit = clone(config);
+        renderAdmin();
+        loadAdmin();
+      } else {
+        const n = load(NAME_KEY);
+        if (n) { if (!judgeName) startJudge(n); showHome(n); restoreFromSheet(); } else showNameScreen();
+      }
+    }
+
+    // ================= EVENTS =================
     document.addEventListener('input', (e) => {
-      if (e.target.id === 'reset-confirm') $('reset-go').disabled = e.target.value.trim().toUpperCase() !== 'RESET';
+      const t = e.target, d = t.dataset;
+      if (draft && t.id === 'best') draft.best = t.value;
+      else if (draft && t.id === 'improve') draft.improve = t.value;
+      else if (t.id === 'reset-confirm') $('reset-go').disabled = t.value.trim().toUpperCase() !== 'RESET';
+      else if (adminEdit && d.catName !== undefined) { adminEdit.categories[d.catName].name = t.value; adminMsg = ''; updateAdminSave(); }
+      else if (adminEdit && d.catMax !== undefined) { const v = parseInt(t.value, 10); if (v >= 1) adminEdit.categories[d.catMax].max = Math.min(10, v); adminMsg = ''; updateAdminSave(); }
+      else if (adminEdit && d.teamName !== undefined) { adminEdit.teams[d.teamName].name = t.value; adminMsg = ''; updateAdminSave(); }
     });
-    document.addEventListener('click', (e) => {
-      const tab = e.target.closest('[data-view]');
-      const row = e.target.closest('[data-pteam]');
-      if (tab) setView(tab.dataset.view);
-      else if (row) openPanelTeam(Number(row.dataset.pteam));
-      else if (e.target.id === 'pm-close' || e.target.id === 'pm-bg') closePanelTeam();
-      else if (e.target.id === 'reset-open') { resetError = ''; openReset(); }
-      else if (e.target.id === 'reset-go') doReset();
-      else if (e.target.id === 'lock-panel') { forget(PANEL_KEY); panelRows = null; closePanelTeam(); renderPanel(); }
+    // Points box: tidy the number and update the total when they leave the box
+    document.addEventListener('change', (e) => { if (e.target.dataset.catMax !== undefined) renderAdmin(); });
+
+    nameInput.addEventListener('input', () => { continueBtn.disabled = nameInput.value.trim().length < 2; });
+
+    nameForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = nameInput.value.trim();
+      if (name.length < 2) return;
+      store(NAME_KEY, name);
+      startJudge(name);
+      restoreNote = API_URL ? 'Checking for your saved scores…' : '';
+      showHome(name);
+      restoreFromSheet().then(() => { if (restoreNote === 'Checking for your saved scores…') { restoreNote = ''; showSyncStatus(); } });
     });
 
-    // ---------- Start ----------
-    const saved = load(NAME_KEY);
-    if (saved) { startJudge(saved); showHome(saved); sendQueue(); restoreFromSheet(); }
-    else showNameScreen();
+    document.addEventListener('submit', (e) => {
+      if (e.target.id === 'unlock-form') {
+        e.preventDefault();
+        const pass = $('panel-pass').value.trim();
+        if (!pass) return;
+        if (pass !== PANEL_PASSWORD) { panelError = "That password isn't right."; renderPanel(); return; }
+        store(PANEL_KEY, pass); panelError = '';
+        renderPanel(); loadPanel();
+      } else if (e.target.id === 'admin-form') {
+        e.preventDefault();
+        const pass = $('admin-pass').value.trim();
+        if (!pass) return;
+        if (pass !== ADMIN_PASSWORD) { adminUnlockErr = "That password isn't right."; renderAdmin(); return; }
+        store(ADMIN_KEY, pass); adminUnlockErr = '';
+        adminEdit = clone(config);
+        renderAdmin(); loadAdmin();
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      const el = e.target.closest('button, tr[data-pteam], #pm-bg');
+      if (!el) return;
+      const d = el.dataset;
+
+      // Tabs
+      if (d.view) { setView(d.view); return; }
+
+      // Judge: team list and scoring sheet
+      if (d.team !== undefined) { openTeam(d.team); return; }
+      if (draft && d.tier) { draft.tier = d.tier; renderSheet(); return; }
+      if (draft && d.note) {
+        draft.notes = draft.notes.includes(d.note) ? draft.notes.filter(x => x !== d.note) : [...draft.notes, d.note];
+        renderSheet(); return;
+      }
+      if (draft && d.cat !== undefined) { draft.scores[d.cat] = Number(d.val); renderSheet(); return; }
+      if (el.id === 'save-score') { saveScore(); return; }
+      if (el.id === 'close-sheet') { closeSheet(); return; }
+      if (el.id === 'change-name') {
+        // Switch judges. The previous judge's scores stay saved and come back when they enter their name again.
+        forget(NAME_KEY);
+        judgeName = ''; allScores = {}; restoreNote = '';
+        showNameScreen(); return;
+      }
+
+      // Panel
+      if (d.pteam !== undefined) { openPanelTeam(d.pteam); return; }
+      if ((el.id === 'pm-close') || (el.id === 'pm-bg' && e.target === el)) { closePanelTeam(); return; }
+      if (el.id === 'reset-open') { resetError = ''; openReset(); return; }
+      if (el.id === 'reset-go') { doReset(); return; }
+      if (el.id === 'lock-panel') { forget(PANEL_KEY); panelRows = null; closePanelTeam(); renderPanel(); return; }
+
+      // Admin
+      if (adminEdit && d.amove) {
+        const [kind, i, dir] = d.amove.split(':'), list = kind === 'cat' ? adminEdit.categories : adminEdit.teams;
+        const a = Number(i), b = a + Number(dir);
+        [list[a], list[b]] = [list[b], list[a]];
+        adminMsg = ''; renderAdmin(); return;
+      }
+      if (adminEdit && d.adel) {
+        const [kind, i] = d.adel.split(':');
+        (kind === 'cat' ? adminEdit.categories : adminEdit.teams).splice(Number(i), 1);
+        adminMsg = ''; renderAdmin(); return;
+      }
+      if (adminEdit && el.id === 'add-cat') {
+        adminEdit.categories.push({ id: nextId('cat'), name: `Category ${adminEdit.categories.length + 1}`, max: 5 });
+        adminMsg = ''; renderAdmin(); return;
+      }
+      if (adminEdit && el.id === 'add-team') {
+        adminEdit.teams.push({ id: nextId('team'), name: '' });
+        adminMsg = ''; renderAdmin(); return;
+      }
+      if (el.id === 'admin-save') { saveAdmin(); return; }
+      if (el.id === 'lock-admin') { forget(ADMIN_KEY); adminEdit = null; renderAdmin(); return; }
+    });
+
+    // ================= START =================
+    const savedName = load(NAME_KEY);
+    if (savedName) { startJudge(savedName); showHome(savedName); sendQueue(); restoreFromSheet(); }
+    else { showNameScreen(); fetchConfig(); }
   </script>
 </body>
 </html>
