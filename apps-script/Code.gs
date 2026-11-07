@@ -66,7 +66,7 @@ function resetAll(key) {
   const sheet = getSheet();
   const last = sheet.getLastRow();
   if (last > 1) {
-    const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+    const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
     sheet.copyTo(ss).setName('Backup ' + stamp);
     if (last === sheet.getMaxRows()) sheet.insertRowAfter(last);  // Sheets won't delete every unfrozen row
     sheet.deleteRows(2, last - 1);
