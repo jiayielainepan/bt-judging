@@ -11,6 +11,7 @@ Built one feature at a time:
 5. Gut check (required): Standout / Solid / Needs work, at the bottom of the scoring sheet; shown with the score on each team card
 6. Google Sheet connection: every Save is sent to a Google Sheet (one row per judge per team), with automatic retry if Wi-Fi drops
 7. Restore by name: entering the same judge name on any phone or browser loads that judge's scores back from the Sheet
+8. Panel view (Judge | Panel toggle, password protected): live ranking by z-score with each judge's total and gut check, standout votes, and per-team category averages, judge comments and a draft feedback report. Password is `PANEL_PASSWORD` in `index.html`.
 
 ## Google Sheet setup
 
