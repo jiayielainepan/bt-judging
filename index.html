@@ -832,8 +832,7 @@
           <button class="lock-btn" id="lock-panel">Lock panel</button>
         </div>
         <div class="jchips">${D.judges.map(j => `<span class="jchip"><b>${escapeHtml(j.name)}</b> ${j.n}/${D.totalTeams} teams · avg ${j.avg.toFixed(1)}/${maxTotal()}<span class="jbar"><i style="width:${Math.min(100, j.n / D.totalTeams * 100)}%"></i></span></span>`).join('')}</div>
-        <div class="pcard"><h2>Live ranking</h2>${table}</div>
-        <div class="reset-row"><button class="reset-btn" id="reset-open">Reset all data</button></div>`;
+        <div class="pcard"><h2>Live ranking</h2>${table}</div>`;
       updateLive();
     }
 
@@ -910,9 +909,10 @@
         applyReset(out.resetAt);
         resetting = false;
         closePanelTeam();
-        panelRows = [];
-        renderPanel();
-        loadPanel();
+        panelRows = null;
+        adminScoreCount = 0;
+        adminMsg = '✓ All scores were reset.';
+        if (view === 'admin') renderAdmin();
       } catch (e) {
         resetting = false;
         resetError = /password/.test(e.message) ? e.message
@@ -984,7 +984,7 @@
           ${E.teams.map((t, i) => `
             <div class="erow">
               <span class="apos">${i + 1}</span>
-              <input class="field" data-team-name="${i}" value="${escapeHtml(t.name)}" placeholder="Team ${i + 1} name (optional)" aria-label="Team ${i + 1} name" maxlength="40">
+              <input class="field" data-team-name="${i}" value="${escapeHtml(t.name)}" placeholder="Name (optional)" aria-label="Team ${i + 1} name" maxlength="40">
               <button class="icon" data-amove="team:${i}:-1" ${i === 0 ? 'disabled' : ''} title="Move up">▲</button>
               <button class="icon" data-amove="team:${i}:1" ${i === E.teams.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
               <button class="icon del" data-adel="team:${i}" ${E.teams.length === 1 ? 'disabled' : ''} title="Remove team">✕</button>
@@ -995,6 +995,11 @@
           <button class="primary" id="admin-save" ${adminDirty() && !adminSaving ? '' : 'disabled'}>${adminSaving ? 'Saving…' : adminDirty() ? 'Save changes' : 'No changes to save'}</button>
           ${adminMsg ? `<div class="okmsg">${escapeHtml(adminMsg)}</div>` : ''}
           ${adminErr ? `<p class="err" style="text-align:center">${escapeHtml(adminErr)}</p>` : ''}
+        </div>
+        <div class="acard" style="margin-top:22px">
+          <h2>Reset all data</h2>
+          <div class="asub">Deletes every judge's scores and comments. Your rubric and teams stay. A backup of the scores is saved as a new tab in the Google Sheet.</div>
+          <button class="reset-btn" id="reset-open">Reset all data</button>
         </div>`;
     }
 
