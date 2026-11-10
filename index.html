@@ -189,8 +189,8 @@
     .cat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; }
     .cat-head { display: flex; justify-content: space-between; font-weight: 600; font-size: 15px; }
     .cat-head span { color: var(--muted); font-weight: 500; font-size: 13px; }
-    .scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 10px; }
-    .scale button { padding: 11px 0; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-weight: 700; font-size: 16px; }
+    .scale { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-top: 10px; }
+    .scale button { padding: 7px 0; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-weight: 700; font-size: 15px; }
     .scale button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
     textarea {
       width: 100%; font: inherit; font-size: 16px; margin-top: 8px;
@@ -235,6 +235,9 @@
     .erow.two { flex-wrap: wrap; row-gap: 6px; }
     .erow input { flex: 1 1 0; min-width: 0; padding: 9px 11px; font-size: 15px; border-radius: 10px; }
     .erow .line2 { flex-basis: 100%; display: flex; align-items: center; gap: 6px; padding-left: 38px; }
+    .scale-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+    .scale-row .scale { flex: 1; margin-top: 0; }
+    .scale-row .end { flex: none; font-size: 12px; font-weight: 600; color: var(--muted); }
     .apos { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: var(--accent-soft); color: var(--accent); flex: none; }
     .pts { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-right: auto; }
     .pts input { width: 60px; flex: none; text-align: center; }
@@ -619,7 +622,8 @@
       if (!draft) { $('sheet').innerHTML = ''; return; }
       const oldSheet = document.querySelector('.sheet');
       const keepScroll = oldSheet ? oldSheet.scrollTop : 0;
-      const left = cats().filter(c => !draft.scores[c.id]).length;
+      const isScored = c => draft.scores[c.id] !== undefined && draft.scores[c.id] !== null && draft.scores[c.id] !== '';
+      const left = cats().filter(c => !isScored(c)).length;
       const ready = left === 0 && !!draft.tier;
       const missing = [];
       if (left) missing.push(`${left} more ${left === 1 ? 'category' : 'categories'}`);
@@ -629,14 +633,18 @@
 
       const catHtml = cats().map(c => {
         let buttons = '';
-        for (let v = 1; v <= c.max; v++) {
+        for (let v = 0; v <= c.max; v++) {
           const on = Number(draft.scores[c.id]) === v ? 'on' : '';
           buttons += `<button class="${on}" data-cat="${escapeHtml(c.id)}" data-val="${v}" aria-label="${escapeHtml(c.name)}: ${v} points">${v}</button>`;
         }
         return `
           <div class="cat">
             <div class="cat-head">${escapeHtml(c.name)} <span>out of ${c.max}</span></div>
-            <div class="scale" style="grid-template-columns:repeat(${Math.min(c.max, 5)},1fr)">${buttons}</div>
+            <div class="scale-row">
+              <span class="end">Weak</span>
+              <div class="scale" style="grid-template-columns:repeat(${Math.min(c.max + 1, 6)},1fr)">${buttons}</div>
+              <span class="end">Excellent</span>
+            </div>
           </div>`;
       }).join('');
 
@@ -686,7 +694,7 @@
     }
 
     function saveScore() {
-      if (!draft || cats().some(c => !draft.scores[c.id]) || !draft.tier) return;
+      if (!draft || cats().some(c => draft.scores[c.id] === undefined || draft.scores[c.id] === null || draft.scores[c.id] === '') || !draft.tier) return;
       const previous = allScores[draft.team];
       allScores[draft.team] = {
         savedAt: Date.now(),
@@ -1012,9 +1020,16 @@
     async function saveAdmin() {
       if (!adminDirty() || adminSaving) return;
       const E = clone(adminEdit);
-      E.categories.forEach((c, i) => { c.name = c.name.trim() || `Category ${i + 1}`; c.max = Math.max(1, Math.min(10, parseInt(c.max, 10) || 5)); });
+      E.categories.forEach((c, i) => {
+        c.name = c.name.trim() || `Category ${i + 1}`;
+        c.max = Math.max(1, Math.min(10, parseInt(c.max, 10) || 5));
+      });
       E.teams.forEach(t => { t.name = (t.name || '').trim(); });
       adminSaving = true; adminErr = ''; adminMsg = ''; renderAdmin();
+      if (!API_URL) {   // not connected (preview): apply on this device only
+        applyConfig(E); adminEdit = clone(E); adminSaving = false;
+        adminMsg = '✓ Saved on this device (not connected to the Google Sheet).'; renderAdmin(); return;
+      }
       try {
         const out = await (await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'config', key: ADMIN_PASSWORD, config: E }) })).json();
         if (!out.ok) throw new Error(out.error === 'wrong-password' ? 'The Google Sheet script has a different admin password. Make sure ADMIN_PASSWORD matches in both.' : 'save-failed');
