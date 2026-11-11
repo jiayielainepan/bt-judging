@@ -216,6 +216,24 @@
     .total { display: flex; justify-content: space-between; align-items: baseline; margin: 16px 2px 0; font-weight: 600; }
     .total b { font-size: 22px; }
     .status.done { background: #e3f4ea; color: #18794e; }
+    .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+    .track-tag { display: inline-block; font-size: 11.5px; font-weight: 600; color: var(--blue); background: var(--accent-soft); border-radius: 999px; padding: 1px 8px; }
+    .prize-card { border: 1.5px dashed var(--maize); }
+    .team-opts { flex-wrap: wrap; row-gap: 6px; }
+    .track-select { flex: 0 1 auto; width: auto; padding: 7px 10px; font: inherit; font-size: 14px; border-radius: 10px; margin-right: 8px; border: 1px solid var(--line); background: #fff; color: var(--ink); }
+    .viewbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .viewbar label { margin: 0; font-size: 14px; }
+    .viewbar select { font: inherit; font-size: 15px; font-weight: 600; padding: 8px 12px; border-radius: 10px; border: 1.5px solid var(--blue); background: #fff; color: var(--blue); }
+    .sample-btn { font-size: 13px; font-weight: 600; color: var(--blue); border: 1px dashed var(--blue); border-radius: 10px; padding: 6px 10px; }
+    .prize-tag { display: inline-block; font-size: 11.5px; font-weight: 600; color: var(--blue); background: var(--maize-soft); border: 1px solid #f1d58a; border-radius: 999px; padding: 1px 8px; }
+    .prize-total { margin-top: 4px; font-size: 14px; color: var(--muted); }
+    .bulk { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; font-size: 13.5px; color: var(--muted); }
+    .bulk input { width: 64px; flex: none; text-align: center; padding: 7px 8px; font-size: 15px; border-radius: 10px; }
+    .bulk-btn { font-weight: 700; color: var(--blue); background: var(--maize); border-radius: 10px; padding: 7px 14px; font-size: 14px; }
+    .bulk-count { margin-left: auto; }
+    .prize-total b { font-size: 17px; }
+    .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--ink); margin: 0 6px 0 0; white-space: nowrap; }
+    .check input { width: 18px; height: 18px; accent-color: var(--blue); flex: none; }
     .fb-hint { font-size: 13px; color: var(--muted); margin-top: 4px; }
     .cat-head .req { color: var(--blue); background: var(--maize-soft); border-radius: 999px; padding: 1px 8px; font-weight: 600; font-size: 12px; }
     .tick { margin-left: 4px; }
@@ -257,7 +275,7 @@
     .scale-row .scale { flex: 1; margin-top: 0; }
     .scale-row .end { flex: none; font-size: 12px; font-weight: 600; color: var(--muted); }
     .apos { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: var(--accent-soft); color: var(--accent); flex: none; }
-    .pts { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-right: auto; }
+    .pts { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-right: auto; white-space: nowrap; }
     .pts input { width: 60px; flex: none; text-align: center; }
     .icon { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); font-size: 14px; flex: none; }
     .icon:hover:not(:disabled) { background: #efede7; color: var(--ink); }
@@ -383,9 +401,12 @@
     // Saved in the Google Sheet, so every judge's phone uses the same categories and teams.
     // Each team and category has a permanent ID, so reordering or renaming never moves scores.
     const DEFAULT_CONFIG = {
-      categories: [1, 2, 3, 4, 5].map(i => ({ id: String(i), name: `Category ${i}`, max: 5 })),
+      categories: [
+        ...[1, 2, 3].map(i => ({ id: String(i), name: `Category ${i}`, max: 5 })),
+        { id: '4', name: '', max: 5, prize: true }          // Category 4: Impact Prize
+      ],
       teams: [1, 2, 3, 4, 5].map(i => ({ id: String(i), name: '' })),
-      lastId: { cat: 5, team: 5 }   // IDs are never reused, even after a team or category is removed
+      lastId: { cat: 4, team: 5 }   // IDs are never reused, even after a team or category is removed
     };
     const validConfig = c => !!(c && Array.isArray(c.categories) && c.categories.length && Array.isArray(c.teams) && c.teams.length);
     let config = DEFAULT_CONFIG;
@@ -393,7 +414,19 @@
 
     const cats = () => config.categories;
     const teams = () => config.teams;
-    const maxTotal = () => cats().reduce((a, c) => a + Number(c.max), 0);
+    // Impact Prize: categories marked "Impact Prize only" are scored just for teams going for the prize,
+    // and are kept out of the main total (the main ranking compares every team on the same categories).
+    // Tracks: each team is judged against the other teams in its track
+    const TRACKS = ['HealthTech', 'FinTech', 'EdTech', 'GeneralTech'];
+    const trackOf = id => { const t = teams().find(x => x.id === String(id)); return t && t.track ? t.track : ''; };
+
+    const catLabel = c => c.prize ? ((c.name || '').trim() ? `Impact Prize: ${c.name.trim()}` : 'Impact Prize') : c.name;
+    const mainCats = () => cats().filter(c => !c.prize);
+    const prizeCats = () => cats().filter(c => c.prize);
+    const isPrizeTeam = id => { const t = teams().find(x => x.id === String(id)); return !!(t && t.prize); };
+    const catsFor = id => cats().filter(c => !c.prize || isPrizeTeam(id));
+    const maxTotal = () => mainCats().reduce((a, c) => a + Number(c.max), 0);
+    const prizeMax = () => prizeCats().reduce((a, c) => a + Number(c.max), 0);
     const teamIndex = id => teams().findIndex(t => t.id === String(id));
     function teamLabel(id) {
       const i = teamIndex(id);
@@ -401,7 +434,8 @@
       const nm = (teams()[i].name || '').trim();
       return `Team ${i + 1}${nm ? ': ' + nm : ''}`;
     }
-    function totalOf(entry) { return cats().reduce((a, c) => a + (Number(entry.scores[c.id]) || 0), 0); }
+    function totalOf(entry) { return mainCats().reduce((a, c) => a + (Number(entry.scores[c.id]) || 0), 0); }
+    function prizeTotalOf(entry) { return prizeCats().reduce((a, c) => a + (Number(entry.scores[c.id]) || 0), 0); }
 
     function applyConfig(c) {
       if (!validConfig(c) || JSON.stringify(c) === JSON.stringify(config)) return;
@@ -625,7 +659,7 @@
           : `<span class="status">Not judged</span>`;
         return `
           <button class="team" data-team="${escapeHtml(t.id)}">
-            <span class="info"><b>${escapeHtml(teamLabel(t.id))}</b></span>
+            <span class="info"><b>${escapeHtml(teamLabel(t.id))}</b>${t.track || (t.prize && prizeCats().length) ? `<span class="tags">${t.track ? `<span class="track-tag">${escapeHtml(t.track)} Track</span>` : ''}${t.prize && prizeCats().length ? '<span class="prize-tag">Impact Prize</span>' : ''}</span>` : ''}</span>
             ${status}
           </button>`;
       }).join('');
@@ -650,7 +684,7 @@
       const oldSheet = document.querySelector('.sheet');
       const keepScroll = oldSheet ? oldSheet.scrollTop : 0;
       const isScored = c => draft.scores[c.id] !== undefined && draft.scores[c.id] !== null && draft.scores[c.id] !== '';
-      const left = cats().filter(c => !isScored(c)).length;
+      const left = catsFor(draft.team).filter(c => !isScored(c)).length;
       const hasKeep = hasNote(draft, 'keep'), hasWork = hasNote(draft, 'work');
       const ready = left === 0 && !!draft.tier && hasKeep && hasWork;
       const missing = [];
@@ -661,15 +695,15 @@
       const total = totalOf(draft);
       const label = teamLabel(draft.team);
 
-      const catHtml = cats().map(c => {
+      const catHtml = catsFor(draft.team).map(c => {
         let buttons = '';
         for (let v = 0; v <= c.max; v++) {
           const on = Number(draft.scores[c.id]) === v ? 'on' : '';
-          buttons += `<button class="${on}" data-cat="${escapeHtml(c.id)}" data-val="${v}" aria-label="${escapeHtml(c.name)}: ${v} points">${v}</button>`;
+          buttons += `<button class="${on}" data-cat="${escapeHtml(c.id)}" data-val="${v}" aria-label="${escapeHtml(catLabel(c))}: ${v} points">${v}</button>`;
         }
         return `
           <div class="cat">
-            <div class="cat-head">${escapeHtml(c.name)} <span>out of ${c.max}</span></div>
+            <div class="cat-head">${escapeHtml(catLabel(c))} <span>out of ${c.max}</span></div>
             <div class="scale-row">
               <span class="end">Weak</span>
               <div class="scale" style="grid-template-columns:repeat(${Math.min(c.max + 1, 6)},1fr)">${buttons}</div>
@@ -707,6 +741,7 @@
               <div class="tiers">${TIERS.map(t => `<button class="tier ${t.id} ${draft.tier === t.id ? 'on' : ''}" data-tier="${t.id}"><b>${t.label}</b><span>${t.desc}</span></button>`).join('')}</div>
             </div>
             <div class="total"><span>Total</span><b>${total} / ${maxTotal()}</b></div>
+            ${isPrizeTeam(draft.team) && prizeCats().length ? `<div class="total prize-total"><span>Impact Prize</span><b>${prizeTotalOf(draft)} / ${prizeMax()}</b></div>` : ''}
             <button class="primary" id="save-score" ${ready ? '' : 'disabled'}>
               ${ready ? 'Save' : `To save, add: ${missing.length > 1 ? missing.slice(0, -1).join(', ') + ' and ' + missing.at(-1) : missing[0]}`}
             </button>
@@ -726,7 +761,7 @@
     function hasNote(d, type) { return d.notes.some(id => NOTES.some(n => n.id === id && n.type === type)); }
 
     function saveScore() {
-      if (!draft || cats().some(c => draft.scores[c.id] === undefined || draft.scores[c.id] === null || draft.scores[c.id] === '') || !draft.tier || !hasNote(draft, 'keep') || !hasNote(draft, 'work')) return;
+      if (!draft || catsFor(draft.team).some(c => draft.scores[c.id] === undefined || draft.scores[c.id] === null || draft.scores[c.id] === '') || !draft.tier || !hasNote(draft, 'keep') || !hasNote(draft, 'work')) return;
       const previous = allScores[draft.team];
       allScores[draft.team] = {
         savedAt: Date.now(),
@@ -753,8 +788,48 @@
     const panelUnlocked = () => load(PANEL_KEY) === PANEL_PASSWORD;
     const TIER_CLASS = { 'Standout': 'standout', 'Solid': 'solid', 'Needs work': 'needs' };
     let panelRows = null, panelUpdated = 0, panelError = '', panelTeam = null, panelLoading = false;
+    let panelView = 'all';   // 'all' or a track name
+
+    // Without a Google Sheet (preview), the panel uses every judge's scores saved on this device
+    function localRows() {
+      const rows = [];
+      try {
+        Object.keys(localStorage).filter(k => k.startsWith(SCORES_KEY + '-name-')).forEach(k => {
+          const judge = k.slice((SCORES_KEY + '-name-').length).replace(/\b\w/g, ch => ch.toUpperCase());
+          const saved = JSON.parse(localStorage.getItem(k) || '{}');
+          Object.entries(saved).forEach(([tid, e]) => {
+            const noteText = type => NOTES.filter(n => n.type === type && (e.notes || []).includes(n.id)).map(n => n.text).join('; ');
+            rows.push({ 'Last updated': new Date(e.savedAt || 0).toISOString(), 'Judge': judge, 'Team ID': tid, 'Team': `Team ${tid}`,
+              'Gut check': e.tier ? tierOf(e.tier).label : '', 'Scores JSON': JSON.stringify(e.scores || {}),
+              'Keep doing': noteText('keep'), 'Work on': noteText('work'), 'What worked': e.best || '', 'What to improve': e.improve || '' });
+          });
+        });
+      } catch (err) {}
+      return rows;
+    }
+
+    // Preview only: fill in sample scores from three judges so the panel has something to show
+    function addSampleScores() {
+      let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      const pick = arr => arr[Math.floor(rnd() * arr.length)];
+      const keep = NOTES.filter(n => n.type === 'keep').map(n => n.id), work = NOTES.filter(n => n.type === 'work').map(n => n.id);
+      ['Elaine', 'Marcus', 'Priya'].forEach((j, ji) => {
+        const saved = {};
+        teams().forEach((t, ti) => {
+          const q = 2 + ((ti * 7 + 3) % 4) * 0.8 - ji * 0.4;   // some teams stronger, Priya a bit tougher
+          const scores = {};
+          catsFor(t.id).forEach(c => scores[c.id] = Math.max(0, Math.min(c.max, Math.round(q * c.max / 5 + (rnd() - 0.5) * 1.5))));
+          const avg = mainCats().reduce((a, c) => a + scores[c.id] / c.max, 0) / mainCats().length;
+          saved[t.id] = { scores, tier: avg > 0.72 ? 'standout' : avg > 0.45 ? 'solid' : 'needs', notes: [pick(keep), pick(work)],
+            best: rnd() < 0.5 ? 'The best part of your presentation was the demo.' : '', improve: rnd() < 0.5 ? 'You could consider improving the pricing story.' : '', savedAt: Date.now() };
+        });
+        store(`${SCORES_KEY}-name-${nameKey(j)}`, JSON.stringify(saved));
+      });
+      loadPanel();
+    }
 
     async function loadPanel() {
+      if (!API_URL && panelUnlocked()) { panelRows = localRows(); panelUpdated = Date.now(); panelError = ''; if (view === 'panel') { renderPanel(); if (panelTeam) openPanelTeam(panelTeam); } return; }
       if (!API_URL || !panelUnlocked() || panelLoading) return;
       panelLoading = true;
       try {
@@ -788,6 +863,7 @@
         latest[k] = {
           jk, judge: String(r['Judge']).trim(), team, ts, gut: String(r['Gut check'] || ''), scores,
           total: totalOf({ scores }),
+          prize: prizeCats().some(c => scores[c.id] !== undefined && scores[c.id] !== '') ? prizeTotalOf({ scores }) : null,
           keep: String(r['Keep doing'] || ''), work: String(r['Work on'] || ''),
           best: String(r['What worked'] || ''), improve: String(r['What to improve'] || '')
         };
@@ -811,7 +887,9 @@
         j.byTeam = {};
         mine.forEach(e => j.byTeam[e.team] = { total: e.total, gut: e.gut, z: sd > 0 ? (e.total - m) / sd : 0 });
       });
-      const scoredTeams = teams().map(t => t.id).filter(id => entries.some(e => e.team === id));
+      const inView = id => panelView === 'all' || trackOf(id) === panelView;
+      const viewTeams = teams().filter(t => inView(t.id));
+      const scoredTeams = viewTeams.map(t => t.id).filter(id => entries.some(e => e.team === id));
       const rows = scoredTeams.map(t => {
         const js = judges.filter(j => j.byTeam[t]);
         return {
@@ -822,7 +900,13 @@
           votes: js.length
         };
       }).sort((a, b) => b.z - a.z);
-      return { entries, judges, rows, totalTeams: teams().length };
+      // Impact Prize ranking: only teams going for it, by their average Impact Prize score
+      const prizeRows = prizeCats().length ? viewTeams.filter(t => t.prize).map(t => {
+        const es = entries.filter(e => e.team === t.id && e.prize !== null);
+        return { team: t.id, byJudge: Object.fromEntries(es.map(e => [e.jk, e.prize])), avg: es.length ? avgOf(es.map(e => e.prize)) : null, n: es.length };
+      }).filter(r => r.n).sort((a, b) => b.avg - a.avg) : [];
+      judges.forEach(j => { j.nView = viewTeams.filter(t => j.byTeam[t.id]).length; });
+      return { entries, judges, rows, prizeRows, totalTeams: viewTeams.length };
     }
 
     function lockScreen(title, text, formId, inputId, error) {
@@ -841,7 +925,6 @@
 
     function renderPanel() {
       const el = $('panel-screen');
-      if (!API_URL) { el.innerHTML = `<div class="card lockbox"><h1>Panel</h1><p>The app isn't connected to the Google Sheet yet.</p></div>`; return; }
       if (!panelUnlocked()) {
         el.innerHTML = lockScreen('Panel', 'The panel is password protected. Organizers will share the password once judging is done.', 'unlock-form', 'panel-pass', panelError);
         return;
@@ -856,7 +939,7 @@
           <tbody>${D.rows.map((x, i) => `
             <tr data-pteam="${escapeHtml(x.team)}">
               <td><b>${i + 1}</b></td>
-              <td><span class="tlink">${escapeHtml(teamLabel(x.team))}</span></td>
+              <td><span class="tlink">${escapeHtml(teamLabel(x.team))}</span>${panelView === 'all' && trackOf(x.team) ? `<div class="note" style="font-size:12px;color:var(--muted)">${escapeHtml(trackOf(x.team))}</div>` : ''}</td>
               ${D.judges.map(j => { const s = j.byTeam[x.team];
                   return `<td class="c">${s ? `<span class="tt ${TIER_CLASS[s.gut] || ''}" title="${escapeHtml(j.name)}: ${escapeHtml(s.gut)}">${s.total}</span>` : '<span class="tt none">–</span>'}</td>`; }).join('')}
               <td class="c">${x.raw.toFixed(1)}</td>
@@ -864,15 +947,35 @@
               <td class="c">${x.standouts} of ${x.votes}</td>
             </tr>`).join('')}</tbody></table></div>
         <div class="legend"><span class="l1">Standout</span><span class="l2">Solid</span><span class="l3">Needs work</span></div>`
-        : `<p class="note" style="color:var(--muted);margin:10px 0 0">No scores yet.</p>`;
+        : `<p class="note" style="color:var(--muted);margin:10px 0 0">${panelView !== 'all' && !teams().some(t => t.track === panelView) ? `No teams are in the ${panelView} Track yet. Assign tracks in the Admin tab.` : 'No scores yet.'}</p>`;
 
       el.innerHTML = `
         <div class="ptop">
           <span class="live" id="panel-live"><span class="dot"></span><span id="panel-updated"></span></span>
           <button class="lock-btn" id="lock-panel">Lock panel</button>
         </div>
-        <div class="jchips">${D.judges.map(j => `<span class="jchip"><b>${escapeHtml(j.name)}</b> ${j.n}/${D.totalTeams} teams · avg ${j.avg.toFixed(1)}/${maxTotal()}<span class="jbar"><i style="width:${Math.min(100, j.n / D.totalTeams * 100)}%"></i></span></span>`).join('')}</div>
-        <div class="pcard"><h2>Live ranking</h2>${table}</div>`;
+        <div class="viewbar">
+          <label for="panel-view">View</label>
+          <select id="panel-view">
+            <option value="all" ${panelView === 'all' ? 'selected' : ''}>All teams</option>
+            ${TRACKS.map(tr => `<option value="${tr}" ${panelView === tr ? 'selected' : ''}>${tr} Track (${teams().filter(t => t.track === tr).length})</option>`).join('')}
+          </select>
+          ${!API_URL ? '<button class="sample-btn" id="sample-scores">Add sample scores (preview only)</button>' : ''}
+        </div>
+        <div class="jchips">${D.judges.map(j => `<span class="jchip"><b>${escapeHtml(j.name)}</b> ${j.nView}/${D.totalTeams} teams · avg ${j.avg.toFixed(1)}/${maxTotal()}<span class="jbar"><i style="width:${D.totalTeams ? Math.min(100, j.nView / D.totalTeams * 100) : 0}%"></i></span></span>`).join('')}</div>
+        <div class="pcard"><h2>${panelView === 'all' ? 'Live ranking · All teams' : `Live ranking · ${panelView} Track`}</h2>${table}</div>
+        ${D.prizeRows.length ? `
+        <div class="pcard" style="margin-top:14px"><h2>Impact Prize${panelView === 'all' ? '' : ` · ${panelView} Track`}</h2>
+          <div class="pscroll"><table class="ptable">
+            <thead><tr><th>#</th><th>Team</th>${D.judges.map(j => `<th class="c">${escapeHtml(j.name)}</th>`).join('')}<th class="c">Avg (out of ${prizeMax()})</th></tr></thead>
+            <tbody>${D.prizeRows.map((x, i) => `
+              <tr data-pteam="${escapeHtml(x.team)}">
+                <td><b>${i + 1}</b></td>
+                <td><span class="tlink">${escapeHtml(teamLabel(x.team))}</span></td>
+                ${D.judges.map(j => `<td class="c">${x.byJudge[j.jk] !== undefined ? x.byJudge[j.jk] : '<span class="tt none">–</span>'}</td>`).join('')}
+                <td class="c"><b>${x.avg.toFixed(1)}</b></td>
+              </tr>`).join('')}</tbody></table></div>
+        </div>` : ''}`;
       updateLive();
     }
 
@@ -888,9 +991,9 @@
       panelTeam = team;
       const D = panelStats();
       const rows = D.entries.filter(e => e.team === team);
-      const catAvgs = cats().map(c => {
+      const catAvgs = catsFor(team).map(c => {
         const vals = rows.map(e => e.scores[c.id]).filter(v => v !== undefined && v !== '' && v !== null).map(Number);
-        return { name: c.name, max: Number(c.max), v: vals.length ? avgOf(vals) : null };
+        return { name: catLabel(c), max: Number(c.max), v: vals.length ? avgOf(vals) : null };
       });
       const worked = rows.filter(e => e.best.trim()), improve = rows.filter(e => e.improve.trim());
       // Quick-tap notes, with how many judges tapped each one
@@ -967,6 +1070,7 @@
     const adminUnlocked = () => load(ADMIN_KEY) === ADMIN_PASSWORD;
     let adminEdit = null, adminMsg = '', adminErr = '', adminSaving = false, adminScoreCount = 0, adminUnlockErr = '';
     const adminDirty = () => !!adminEdit && JSON.stringify(adminEdit) !== JSON.stringify(config);
+    const MAX_TEAMS = 75;   // keeps the saved setup within what the Google Sheet script can store
     function nextId(kind) {
       const list = kind === 'cat' ? adminEdit.categories : adminEdit.teams;
       adminEdit.lastId = adminEdit.lastId || { cat: 5, team: 5 };
@@ -997,39 +1101,39 @@
       }
       if (!adminEdit) adminEdit = clone(config);
       const E = adminEdit;
-      const total = E.categories.reduce((a, c) => a + (Number(c.max) || 0), 0);
+      const hasPrizeCat = E.categories.some(c => c.prize);
       el.innerHTML = `
         <div class="ptop"><button class="lock-btn" id="lock-admin">Lock admin</button></div>
         ${adminScoreCount ? `<div class="warnnote">Judges have already given ${adminScoreCount} score${adminScoreCount > 1 ? 's' : ''}. Renaming is fine, but changing points, removing categories or reordering teams now can make totals hard to compare and confuse judges.</div>` : ''}
-        <div class="acard">
-          <h2>Rubric categories</h2>
-          <div class="asub">Name each category and set how many points it's worth.</div>
-          ${E.categories.map((c, i) => `
-            <div class="erow two">
-              <span class="apos">${i + 1}</span>
-              <input class="field" data-cat-name="${i}" value="${escapeHtml(c.name)}" placeholder="Category name" aria-label="Category ${i + 1} name" maxlength="60">
-              <button class="icon del" data-adel="cat:${i}" ${E.categories.length === 1 ? 'disabled' : ''} title="Remove category">✕</button>
-              <div class="line2">
-                <span class="pts">out of <input class="field" type="number" inputmode="numeric" min="1" max="10" data-cat-max="${i}" value="${c.max}" aria-label="Points for category ${i + 1}"> points</span>
-                <button class="icon" data-amove="cat:${i}:-1" ${i === 0 ? 'disabled' : ''} title="Move up">▲</button>
-                <button class="icon" data-amove="cat:${i}:1" ${i === E.categories.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
-              </div>
-            </div>`).join('')}
-          <button class="add-line" id="add-cat">+ Add category</button>
-          <div class="totalnote">Total possible: <b>${total} points</b></div>
-        </div>
+        ${catCard(E, false)}
+        ${catCard(E, true)}
         <div class="acard">
           <h2>Teams</h2>
-          <div class="asub">In presenting order. Team names are optional, e.g. a code name like "Botties".</div>
+          <div class="asub">In presenting order. Team names are optional, e.g. a code name like "Botties". Pick each team's track, and tick "Include Impact Prize" for teams going for it.</div>
           ${E.teams.map((t, i) => `
-            <div class="erow">
+            <div class="erow two">
               <span class="apos">${i + 1}</span>
               <input class="field" data-team-name="${i}" value="${escapeHtml(t.name)}" placeholder="Name (optional)" aria-label="Team ${i + 1} name" maxlength="40">
               <button class="icon" data-amove="team:${i}:-1" ${i === 0 ? 'disabled' : ''} title="Move up">▲</button>
               <button class="icon" data-amove="team:${i}:1" ${i === E.teams.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
               <button class="icon del" data-adel="team:${i}" ${E.teams.length === 1 ? 'disabled' : ''} title="Remove team">✕</button>
+              <div class="line2 team-opts">
+                <select class="field track-select" data-team-track="${i}" aria-label="Team ${i + 1} track">
+                  <option value="" ${!t.track ? 'selected' : ''}>Pick a track</option>
+                  ${TRACKS.map(tr => `<option value="${tr}" ${t.track === tr ? 'selected' : ''}>${tr} Track</option>`).join('')}
+                </select>
+                <label class="check"><input type="checkbox" data-team-prize="${i}" ${t.prize ? 'checked' : ''}> Include Impact Prize</label>
+              </div>
             </div>`).join('')}
           <button class="add-line" id="add-team">+ Add team</button>
+          <div class="bulk">
+            <span>Or add</span>
+            <input class="field" type="number" inputmode="numeric" min="1" max="${MAX_TEAMS}" id="bulk-n" value="10" aria-label="How many teams to add">
+            <span>teams at once</span>
+            <button class="bulk-btn" id="add-teams-bulk">Add</button>
+            <span class="bulk-count">${E.teams.length} team${E.teams.length === 1 ? '' : 's'} now${E.teams.length >= MAX_TEAMS ? ` (max ${MAX_TEAMS})` : ''}</span>
+          </div>
+          ${E.teams.some(t => t.prize) && !E.categories.some(c => c.prize) ? '<div class="totalnote">Add Impact Prize categories above so judges have something to score for these teams.</div>' : ''}
         </div>
         <div class="savebar">
           <button class="primary" id="admin-save" ${adminDirty() && !adminSaving ? '' : 'disabled'}>${adminSaving ? 'Saving…' : adminDirty() ? 'Save changes' : 'No changes to save'}</button>
@@ -1043,6 +1147,34 @@
         </div>`;
     }
 
+    // One card per kind of category: the main rubric, and the Impact Prize categories
+    function catCard(E, prize) {
+      const list = E.categories.map((c, i) => ({ c, i })).filter(x => !!x.c.prize === prize);
+      const pts = list.reduce((a, x) => a + (Number(x.c.max) || 0), 0);
+      const mainCount = E.categories.filter(c => !c.prize).length;
+      return `
+        <div class="acard ${prize ? 'prize-card' : ''}">
+          <h2>${prize ? 'Impact Prize categories' : 'Rubric categories'}</h2>
+          <div class="asub">${prize
+            ? 'Only for teams with "Include Impact Prize" ticked, kept separate from the main total. Judges see these as "Impact Prize: [name]", or just "Impact Prize" if there\'s no name.'
+            : 'Every team is scored on these. Name each category and set how many points it\'s worth.'}</div>
+          ${list.map((x, k) => `
+            <div class="erow two">
+              <span class="apos">${prize ? E.categories.filter(c => !c.prize).length + k + 1 : k + 1}</span>
+              <input class="field" data-cat-name="${x.i}" value="${escapeHtml(x.c.name)}" placeholder="${prize ? 'Name (optional)' : 'Category name'}" aria-label="Category name" maxlength="60">
+              <button class="icon del" data-adel="cat:${x.i}" ${!prize && mainCount === 1 ? 'disabled' : ''} title="Remove category">✕</button>
+              <div class="line2">
+                <span class="pts">out of <input class="field" type="number" inputmode="numeric" min="1" max="10" data-cat-max="${x.i}" value="${x.c.max}" aria-label="Points"> points</span>
+                <button class="icon" data-amove="cat:${x.i}:-1" ${k === 0 ? 'disabled' : ''} title="Move up">▲</button>
+                <button class="icon" data-amove="cat:${x.i}:1" ${k === list.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
+              </div>
+            </div>`).join('')}
+          ${prize && !list.length ? '<div class="totalnote" style="margin-top:0">No Impact Prize categories yet.</div>' : ''}
+          <button class="add-line" id="${prize ? 'add-prize-cat' : 'add-cat'}">+ Add ${prize ? 'Impact Prize category' : 'category'}</button>
+          ${list.length ? `<div class="totalnote">${prize ? 'Impact Prize total' : 'Total possible'}: <b>${pts} points</b></div>` : ''}
+        </div>`;
+    }
+
     function updateAdminSave() {
       const b = $('admin-save'); if (!b) return;
       b.disabled = !adminDirty() || adminSaving;
@@ -1053,8 +1185,9 @@
       if (!adminDirty() || adminSaving) return;
       const E = clone(adminEdit);
       E.categories.forEach((c, i) => {
-        c.name = c.name.trim() || `Category ${i + 1}`;
+        c.name = (c.name || '').trim() || (c.prize ? '' : `Category ${i + 1}`);
         c.max = Math.max(1, Math.min(10, parseInt(c.max, 10) || 5));
+        c.prize = !!c.prize;
       });
       E.teams.forEach(t => { t.name = (t.name || '').trim(); });
       adminSaving = true; adminErr = ''; adminMsg = ''; renderAdmin();
@@ -1112,7 +1245,14 @@
       else if (adminEdit && d.teamName !== undefined) { adminEdit.teams[d.teamName].name = t.value; adminMsg = ''; updateAdminSave(); }
     });
     // Points box: tidy the number and update the total when they leave the box
-    document.addEventListener('change', (e) => { if (e.target.dataset.catMax !== undefined) renderAdmin(); });
+    document.addEventListener('change', (e) => {
+      const d = e.target.dataset;
+      if (d.catMax !== undefined) renderAdmin();
+      else if (adminEdit && d.catPrize !== undefined) { adminEdit.categories[d.catPrize].prize = e.target.checked; adminMsg = ''; renderAdmin(); }
+      else if (adminEdit && d.teamPrize !== undefined) { adminEdit.teams[d.teamPrize].prize = e.target.checked; adminMsg = ''; renderAdmin(); }
+      else if (e.target.id === 'panel-view') { panelView = e.target.value; closePanelTeam(); renderPanel(); }
+      else if (adminEdit && d.teamTrack !== undefined) { adminEdit.teams[d.teamTrack].track = e.target.value; adminMsg = ''; updateAdminSave(); }
+    });
 
     nameInput.addEventListener('input', () => { continueBtn.disabled = nameInput.value.trim().length < 2; });
 
@@ -1174,6 +1314,7 @@
       // Panel
       if (d.pteam !== undefined) { openPanelTeam(d.pteam); return; }
       if ((el.id === 'pm-close') || (el.id === 'pm-bg' && e.target === el)) { closePanelTeam(); return; }
+      if (el.id === 'sample-scores') { addSampleScores(); return; }
       if (el.id === 'reset-open') { resetError = ''; openReset(); return; }
       if (el.id === 'reset-go') { doReset(); return; }
       if (el.id === 'lock-panel') { forget(PANEL_KEY); panelRows = null; closePanelTeam(); renderPanel(); return; }
@@ -1181,8 +1322,10 @@
       // Admin
       if (adminEdit && d.amove) {
         const [kind, i, dir] = d.amove.split(':'), list = kind === 'cat' ? adminEdit.categories : adminEdit.teams;
-        const a = Number(i), b = a + Number(dir);
-        [list[a], list[b]] = [list[b], list[a]];
+        const a = Number(i);
+        let b = a + Number(dir);
+        if (kind === 'cat') while (b >= 0 && b < list.length && !!list[b].prize !== !!list[a].prize) b += Number(dir);
+        if (b >= 0 && b < list.length) [list[a], list[b]] = [list[b], list[a]];
         adminMsg = ''; renderAdmin(); return;
       }
       if (adminEdit && d.adel) {
@@ -1194,7 +1337,17 @@
         adminEdit.categories.push({ id: nextId('cat'), name: `Category ${adminEdit.categories.length + 1}`, max: 5 });
         adminMsg = ''; renderAdmin(); return;
       }
+      if (adminEdit && el.id === 'add-prize-cat') {
+        adminEdit.categories.push({ id: nextId('cat'), name: '', max: 5, prize: true });
+        adminMsg = ''; renderAdmin(); return;
+      }
+      if (adminEdit && el.id === 'add-teams-bulk') {
+        const n = Math.max(0, Math.min(MAX_TEAMS - adminEdit.teams.length, parseInt($('bulk-n').value, 10) || 0));
+        for (let k = 0; k < n; k++) adminEdit.teams.push({ id: nextId('team'), name: '' });
+        adminMsg = ''; renderAdmin(); return;
+      }
       if (adminEdit && el.id === 'add-team') {
+        if (adminEdit.teams.length >= MAX_TEAMS) return;
         adminEdit.teams.push({ id: nextId('team'), name: '' });
         adminMsg = ''; renderAdmin(); return;
       }
