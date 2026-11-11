@@ -286,6 +286,7 @@
     .icon.del:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); }
     .add-line { width: 100%; margin-top: 10px; padding: 11px; border-radius: 12px; border: 1.5px dashed #cfcac0; color: var(--accent); font-weight: 600; }
     .add-line:hover { background: var(--accent-soft); border-color: var(--accent); }
+    .add-line:disabled { opacity: .45; cursor: default; background: none; border-color: #cfcac0; }
     .totalnote { font-size: 13px; color: var(--muted); margin-top: 10px; }
     .warnnote { background: #fff4d6; border: 1px solid #f1d58a; color: #7a5200; border-radius: 12px; padding: 10px 12px; font-size: 13.5px; margin-bottom: 14px; }
     .savebar { position: sticky; bottom: 0; background: linear-gradient(transparent, var(--bg) 30%); padding: 18px 0 4px; }
@@ -495,16 +496,20 @@
 
     function buildPayload(teamId, entry) {
       const noteText = type => NOTES.filter(n => n.type === type && entry.notes.includes(n.id)).map(n => n.text).join('; ');
-      const firstFive = cats().slice(0, 5).map(c => entry.scores[c.id] ?? '');   // readable columns in the Sheet
-      while (firstFive.length < 5) firstFive.push('');
+      // Readable score columns in the Sheet: rubric categories, then Impact Prize categories (up to 10)
+      const sheetCats = [...mainCats(), ...prizeCats()].slice(0, MAX_CATS);
       return {
         judge: judgeName,
         team: teamLabel(teamId),
         teamId: String(teamId),
+        track: trackOf(teamId),
         gut: entry.tier ? tierOf(entry.tier).label : '',
-        scores: firstFive,
+        slots: sheetCats.map(c => entry.scores[c.id] ?? ''),
+        slotNames: sheetCats.map(catLabel),
         total: totalOf(entry),
         maxTotal: maxTotal(),
+        prizeTotal: isPrizeTeam(teamId) && prizeCats().length ? prizeTotalOf(entry) : '',
+        prizeMax: isPrizeTeam(teamId) && prizeCats().length ? prizeMax() : '',
         scoresJson: JSON.stringify(entry.scores),
         keep: noteText('keep'),
         work: noteText('work'),
@@ -1092,6 +1097,7 @@
     const adminUnlocked = () => load(ADMIN_KEY) === ADMIN_PASSWORD;
     let adminEdit = null, adminMsg = '', adminErr = '', adminSaving = false, adminScoreCount = 0, adminUnlockErr = '';
     const adminDirty = () => !!adminEdit && JSON.stringify(adminEdit) !== JSON.stringify(config);
+    const MAX_CATS = 10;    // the Google Sheet has 10 score columns
     const MAX_TEAMS = 75;   // keeps the saved setup within what the Google Sheet script can store
     function nextId(kind) {
       const list = kind === 'cat' ? adminEdit.categories : adminEdit.teams;
@@ -1192,7 +1198,8 @@
               </div>
             </div>`).join('')}
           ${prize && !list.length ? '<div class="totalnote" style="margin-top:0">No Impact Prize categories yet.</div>' : ''}
-          <button class="add-line" id="${prize ? 'add-prize-cat' : 'add-cat'}">+ Add ${prize ? 'Impact Prize category' : 'category'}</button>
+          <button class="add-line" id="${prize ? 'add-prize-cat' : 'add-cat'}" ${E.categories.length >= MAX_CATS ? 'disabled' : ''}>+ Add ${prize ? 'Impact Prize category' : 'category'}</button>
+          ${E.categories.length >= MAX_CATS ? `<div class="totalnote">Up to ${MAX_CATS} categories in all (rubric + Impact Prize).</div>` : ''}
           ${list.length ? `<div class="totalnote">${prize ? 'Impact Prize total' : 'Total possible'}: <b>${pts} points</b></div>` : ''}
         </div>`;
     }
@@ -1366,10 +1373,12 @@
         adminMsg = ''; renderAdmin(); return;
       }
       if (adminEdit && el.id === 'add-cat') {
+        if (adminEdit.categories.length >= MAX_CATS) return;
         adminEdit.categories.push({ id: nextId('cat'), name: `Category ${adminEdit.categories.length + 1}`, max: 5 });
         adminMsg = ''; renderAdmin(); return;
       }
       if (adminEdit && el.id === 'add-prize-cat') {
+        if (adminEdit.categories.length >= MAX_CATS) return;
         adminEdit.categories.push({ id: nextId('cat'), name: '', max: 5, prize: true });
         adminMsg = ''; renderAdmin(); return;
       }
