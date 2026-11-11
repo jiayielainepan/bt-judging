@@ -3,18 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>B+T Judging</title>
+  <title>Business+Tech Judging</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #f5f4f0;
+      /* University of Michigan colors */
+      --blue: #00274C;          /* Michigan Blue */
+      --maize: #FFCB05;         /* Maize */
+      --maize-soft: #FFF5CC;
+      --bg: #F3F5F8;
       --card: #ffffff;
-      --ink: #15213b;
-      --muted: #667085;
-      --line: #e4e2db;
-      --accent: #2a55c4;
-      --accent-soft: #e8eefc;
+      --ink: #00274C;
+      --muted: #5B6B7F;
+      --line: #DDE3EA;
+      --accent: #00274C;
+      --accent-soft: #E3EAF3;
       --danger: #b42318;
       --danger-soft: #fde8e7;
     }
@@ -30,18 +34,28 @@
     }
     button { font: inherit; color: inherit; cursor: pointer; border: none; background: none; }
     header {
-      background: var(--ink);
+      background: var(--blue);
       color: #fff;
-      padding: 14px 20px;
+      padding: 10px 16px;
       font-weight: 700;
+      border-bottom: 4px solid var(--maize);
     }
-    header small { display: block; font-weight: 500; opacity: .7; font-size: 12px; }
+    header small { display: block; font-weight: 500; opacity: .75; font-size: 12px; }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; line-height: 1.25; }
+    .brand img { height: 40px; width: auto; flex: none; }
+    .view-tabs { flex: none; }
+    @media (max-width: 400px) {
+      .brand { font-size: 14px; gap: 8px; }
+      .brand img { height: 32px; }
+      .view-tabs button { padding: 6px 8px; font-size: 13px; }
+    }
+    .hero-logo { display: block; width: 100%; max-width: 320px; height: auto; margin: 0 auto 20px; }
     main { max-width: 440px; margin: 0 auto; padding: 28px 20px 40px; }
     main.wide { max-width: 1100px; }
     .hbar { display: flex; align-items: center; gap: 12px; max-width: 1100px; margin: 0 auto; }
     .view-tabs { margin-left: auto; display: flex; background: rgba(255,255,255,.12); border-radius: 999px; padding: 3px; }
     .view-tabs button { color: #fff; opacity: .75; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; }
-    .view-tabs button.on { background: #fff; color: var(--ink); opacity: 1; }
+    .view-tabs button.on { background: var(--maize); color: var(--blue); opacity: 1; }
 
     /* Panel */
     .lockbox { max-width: 400px; margin: 30px auto 0; }
@@ -59,7 +73,7 @@
     .jchip { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
     .jchip b { font-weight: 600; }
     .jchip .jbar { display: inline-block; width: 46px; height: 5px; background: #eceae4; border-radius: 9px; vertical-align: middle; margin-left: 6px; overflow: hidden; }
-    .jchip .jbar i { display: block; height: 100%; background: var(--accent); }
+    .jchip .jbar i { display: block; height: 100%; background: var(--maize); }
     .pcard { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
     .pcard h2 { font-size: 17px; margin: 0; }
     .pscroll { overflow-x: auto; margin-top: 10px; }
@@ -82,7 +96,7 @@
     .legend .l1::before { background: #e3f4ea; border: 1px solid #18794e; }
     .legend .l2::before { background: #fff4d6; border: 1px solid #9a6700; }
     .legend .l3::before { background: #fdeee3; border: 1px solid #b54708; }
-    .pm-bg { position: fixed; inset: 0; background: rgba(21,33,59,.45); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 30; }
+    .pm-bg { position: fixed; inset: 0; background: rgba(0,39,76,.5); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 30; }
     .pm { background: var(--bg); width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto; border-radius: 18px; padding: 18px; }
     .pm .pcard { margin-bottom: 12px; }
     .pm h3 { font-size: 14px; margin: 0 0 10px; }
@@ -120,17 +134,18 @@
       background: #fff;
       color: var(--ink);
     }
-    input:focus { outline: 3px solid var(--accent-soft); border-color: var(--accent); }
+    input:focus { outline: 3px solid var(--maize-soft); border-color: var(--maize); }
     .primary {
       width: 100%;
       margin-top: 16px;
       padding: 14px;
       font-weight: 600;
       border-radius: 12px;
-      background: var(--accent);
-      color: #fff;
+      background: var(--maize);
+      color: var(--blue);
+      font-weight: 700;
     }
-    .primary:disabled { opacity: .4; cursor: not-allowed; }
+    .primary:disabled { opacity: .45; cursor: not-allowed; }
     .link { color: var(--accent); font-size: 14px; font-weight: 600; padding: 4px 0; }
     .hidden { display: none !important; }
 
@@ -176,7 +191,7 @@
     .add-row:hover { background: var(--accent-soft); border-color: var(--accent); }
 
     /* Bottom sheet (placeholder for scoring) */
-    .sheet-bg { position: fixed; inset: 0; background: rgba(21,33,59,.45); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
+    .sheet-bg { position: fixed; inset: 0; background: rgba(0,39,76,.5); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
     .sheet {
       background: var(--bg); width: 100%; max-width: 440px;
       border-radius: 20px 20px 0 0; padding: 22px 20px 26px; text-align: center;
@@ -197,7 +212,7 @@
       padding: 11px 13px; border: 1px solid var(--line); border-radius: 12px;
       resize: vertical; min-height: 76px; background: #fff; color: var(--ink);
     }
-    textarea:focus { outline: 3px solid var(--accent-soft); border-color: var(--accent); }
+    textarea:focus { outline: 3px solid var(--maize-soft); border-color: var(--maize); }
     .total { display: flex; justify-content: space-between; align-items: baseline; margin: 16px 2px 0; font-weight: 600; }
     .total b { font-size: 22px; }
     .status.done { background: #e3f4ea; color: #18794e; }
@@ -210,7 +225,7 @@
     .chip.work.on { background: #fdeee3; border: 1px solid #b54708; color: #b54708; }
     .field-label { font-size: 14px; font-weight: 600; margin-top: 14px; }
     .field-label:first-of-type { margin-top: 4px; }
-    .gut { border: 1.5px solid var(--accent); }
+    .gut { border: 2px solid var(--maize); }
     .gut-q { font-weight: 700; font-size: 17px; margin: 2px 0 12px; color: var(--ink); }
     .gut-hint { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
     .tiers { display: grid; gap: 8px; }
@@ -224,7 +239,7 @@
     .status.solid { background: #fff4d6; color: #9a6700; }
     .status.needs { background: #fdeee3; color: #b54708; }
     main.mid { max-width: 600px; }
-    .view-tabs button { padding: 6px 12px; }
+    .view-tabs button { padding: 6px 11px; font-size: 13.5px; }
     /* Admin */
     .acard { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
     .acard + .acard { margin-top: 14px; }
@@ -255,7 +270,10 @@
 </head>
 <body>
   <header><div class="hbar">
-    <div>B+T Judging <small>JAM Challenge Round</small></div>
+    <div class="brand">
+      <img src="assets/jar-white.png" alt="">
+      <div>Business+Tech Judging</div>
+    </div>
     <div class="view-tabs">
       <button data-view="judge" class="on">Judge</button>
       <button data-view="panel">Panel</button>
@@ -266,11 +284,12 @@
   <main>
     <!-- Screen 1: ask for the judge's name -->
     <section id="name-screen" class="card hidden">
+      <img class="hero-logo" src="assets/logo-blue.png" alt="Business+Tech Innovation Jam">
       <h1>Welcome, judge</h1>
       <p>Thanks for judging today. Enter your name to get started.</p>
       <form id="name-form">
         <label for="name-input">What's your name?</label>
-        <input id="name-input" type="text" autocomplete="name" placeholder="e.g. Sarah Chen" maxlength="60">
+        <input id="name-input" type="text" autocomplete="name" placeholder="e.g. Phil Brabbs" maxlength="60">
         <button id="continue-btn" class="primary" type="submit" disabled>Continue</button>
       </form>
     </section>
@@ -597,7 +616,6 @@
           : `<span class="status">Not judged</span>`;
         return `
           <button class="team" data-team="${escapeHtml(t.id)}">
-            <span class="num">${i + 1}</span>
             <span class="info"><b>${escapeHtml(teamLabel(t.id))}</b></span>
             ${status}
           </button>`;
@@ -652,7 +670,6 @@
         <div class="sheet-bg" id="sheet-bg">
           <div class="sheet">
             <div class="sheet-top">
-              <span class="num">${teamIndex(draft.team) + 1}</span>
               <h2>${escapeHtml(label)}</h2>
               <button class="cancel" id="close-sheet">Cancel</button>
             </div>
