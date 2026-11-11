@@ -438,8 +438,10 @@
     function teamLabel(id) {
       const i = teamIndex(id);
       if (i < 0) return 'Removed team';
+      // "1. Team 48" when the name is a team number, "1. Botties" for a name, "Team 1" if blank
       const nm = (teams()[i].name || '').trim();
-      return `Team ${i + 1}${nm ? ': ' + nm : ''}`;
+      if (!nm) return `Team ${i + 1}`;
+      return `${i + 1}. ${/^\d+$/.test(nm) ? 'Team ' + nm : nm}`;
     }
     function totalOf(entry) { return mainCats().reduce((a, c) => a + (Number(entry.scores[c.id]) || 0), 0); }
     function prizeTotalOf(entry) { return prizeCats().reduce((a, c) => a + (Number(entry.scores[c.id]) || 0), 0); }
@@ -671,7 +673,9 @@
         String(i + 1).startsWith(q) ||
         (t.name || '').toLowerCase().includes(q) ||
         (t.track || '').toLowerCase().includes(q));
-      return hits.sort((a, b) => (String(b.i + 1) === q) - (String(a.i + 1) === q));
+      // Exact team number/name first, then exact presenting order
+      const rank = ({ t, i }) => ((t.name || '').trim().toLowerCase() === q ? 2 : 0) + (String(i + 1) === q ? 1 : 0);
+      return hits.sort((a, b) => rank(b) - rank(a));
     }
 
     function renderTeams() {
@@ -1137,11 +1141,11 @@
         ${catCard(E, true)}
         <div class="acard">
           <h2>Teams</h2>
-          <div class="asub">In presenting order. Team names are optional, e.g. a code name like "Botties". Pick each team's track, and tick "Include Impact Prize" for teams going for it.</div>
+          <div class="asub">In presenting order. Enter each team's number (shows as "1. Team 48") or a name, or leave blank. Pick each team's track, and tick "Include Impact Prize" for teams going for it.</div>
           ${E.teams.map((t, i) => `
             <div class="erow two">
               <span class="apos">${i + 1}</span>
-              <input class="field" data-team-name="${i}" value="${escapeHtml(t.name)}" placeholder="Name (optional)" aria-label="Team ${i + 1} name" maxlength="40">
+              <input class="field" data-team-name="${i}" value="${escapeHtml(t.name)}" placeholder="Team # or name" aria-label="Team ${i + 1} name" maxlength="40">
               <button class="icon" data-amove="team:${i}:-1" ${i === 0 ? 'disabled' : ''} title="Move up">▲</button>
               <button class="icon" data-amove="team:${i}:1" ${i === E.teams.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
               <button class="icon del" data-adel="team:${i}" ${E.teams.length === 1 ? 'disabled' : ''} title="Remove team">✕</button>
@@ -1288,7 +1292,7 @@
       if (e.key !== 'Enter') return;
       e.preventDefault();
       const shown = matchingTeams(), q = teamQuery.trim().toLowerCase().replace(/^team\s*/, '');
-      const exact = shown.find(({ i }) => String(i + 1) === q);
+      const exact = shown.find(({ t }) => (t.name || '').trim().toLowerCase() === q) || shown.find(({ i }) => String(i + 1) === q);
       const pick = exact || (shown.length === 1 ? shown[0] : null);
       if (pick) { e.target.blur(); openTeam(pick.t.id); }
     });
