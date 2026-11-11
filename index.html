@@ -210,7 +210,7 @@
     textarea {
       width: 100%; font: inherit; font-size: 16px; margin-top: 8px;
       padding: 11px 13px; border: 1px solid var(--line); border-radius: 12px;
-      resize: vertical; min-height: 76px; background: #fff; color: var(--ink);
+      resize: vertical; min-height: 76px; background: #fff; color: var(--ink); overflow-y: hidden;
     }
     textarea:focus { outline: 3px solid var(--maize-soft); border-color: var(--maize); }
     .total { display: flex; justify-content: space-between; align-items: baseline; margin: 16px 2px 0; font-weight: 600; }
@@ -238,6 +238,15 @@
     .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--ink); margin: 0 6px 0 0; white-space: nowrap; }
     .check input { width: 18px; height: 18px; accent-color: var(--blue); flex: none; }
     .fb-hint { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    /* Criteria dropdown on each category */
+    .cat-head .hright { display: flex; align-items: center; gap: 8px; flex: none; }
+    .cat-head .crit-btn { font-size: 12px; font-weight: 600; color: var(--blue); background: var(--accent-soft); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+    .crit-btn .car { display: inline-block; margin-left: 2px; transition: transform .15s; }
+    .crit-btn.open .car { transform: rotate(180deg); }
+    .crit-list { margin: 8px 0 0; padding: 8px 10px 8px 26px; background: #F7F9FB; border-radius: 10px; font-size: 13px; color: #33475B; }
+    .crit-list li { margin: 3px 0; }
+    .crit-list .eg { display: block; color: var(--muted); font-size: 12px; }
+    .erow .crit-edit { flex-basis: 100%; margin: 0 0 0 38px; min-height: 64px; font-size: 14px; padding: 9px 11px; border-radius: 10px; width: calc(100% - 38px); }
     .cat-head .req { color: var(--blue); background: var(--maize-soft); border-radius: 999px; padding: 1px 8px; font-weight: 600; font-size: 12px; }
     .tick { margin-left: 4px; }
     .group { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin: 12px 0 6px; }
@@ -427,6 +436,9 @@
     const TRACKS = ['HealthTech', 'FinTech', 'EdTech', 'GeneralTech'];
     const trackOf = id => { const t = teams().find(x => x.id === String(id)); return t && t.track ? t.track : ''; };
 
+    // Criteria: what to look for in a category, one per line. Anything from "e.g." on shows in smaller grey text.
+    const criteriaOf = c => String(c.criteria || '').split('\n').map(x => x.trim()).filter(Boolean);
+    let critOpen = new Set();   // categories whose Criteria list is open on the score screen
     const catLabel = c => c.prize ? ((c.name || '').trim() ? `Impact Prize: ${c.name.trim()}` : 'Impact Prize') : c.name;
     const mainCats = () => cats().filter(c => !c.prize);
     const prizeCats = () => cats().filter(c => c.prize);
@@ -697,6 +709,7 @@
 
     // ---------- Scoring sheet ----------
     function openTeam(id) {
+      critOpen = new Set();
       const saved = allScores[id];
       draft = {
         team: id,
@@ -731,9 +744,15 @@
           const on = Number(draft.scores[c.id]) === v ? 'on' : '';
           buttons += `<button class="${on}" data-cat="${escapeHtml(c.id)}" data-val="${v}" aria-label="${escapeHtml(catLabel(c))}: ${v} points">${v}</button>`;
         }
+        const crit = criteriaOf(c), isOpen = critOpen.has(c.id);
+        const critList = isOpen ? `<ul class="crit-list">${crit.map(line => {
+          const k = line.search(/\(?\s*e\.g\./i);
+          return k > 0 ? `<li>${escapeHtml(line.slice(0, k).trim())}<span class="eg">${escapeHtml(line.slice(k).trim().replace(/^\(\s*/, '').replace(/\)\s*$/, ''))}</span></li>` : `<li>${escapeHtml(line)}</li>`;
+        }).join('')}</ul>` : '';
         return `
           <div class="cat">
-            <div class="cat-head">${escapeHtml(catLabel(c))} <span>out of ${c.max}</span></div>
+            <div class="cat-head">${escapeHtml(catLabel(c))} <span class="hright">${crit.length ? `<button class="crit-btn ${isOpen ? 'open' : ''}" data-crit="${escapeHtml(c.id)}" aria-expanded="${isOpen}">Criteria <span class="car">▾</span></button>` : ''}<span>out of ${c.max}</span></span></div>
+            ${critList}
             <div class="scale-row">
               <span class="end">Weak</span>
               <div class="scale" style="grid-template-columns:repeat(${Math.min(c.max + 1, 6)},1fr)">${buttons}</div>
@@ -762,9 +781,9 @@
               <div class="cat-head">In your own words <span>encouraged</span></div>
               <div class="fb-hint">Teams learn the most from a sentence in your own words. Even one line makes a big difference.</div>
               <div class="field-label">What worked</div>
-              <textarea id="best" maxlength="250" placeholder="The best part of your presentation was…">${escapeHtml(draft.best)}</textarea>
+              <textarea id="best" placeholder="The best part of your presentation was…">${escapeHtml(draft.best)}</textarea>
               <div class="field-label">What to improve</div>
-              <textarea id="improve" maxlength="250" placeholder="You could consider improving…">${escapeHtml(draft.improve)}</textarea>
+              <textarea id="improve" placeholder="You could consider improving…">${escapeHtml(draft.improve)}</textarea>
             </div>
             <div class="cat gut">
               <p class="gut-q">What's your gut feeling about ${escapeHtml(label)}?</p>
@@ -777,6 +796,7 @@
             </button>
           </div>
         </div>`;
+      growAll();
       const newSheet = document.querySelector('.sheet');
       if (newSheet) newSheet.scrollTop = keepScroll;
     }
@@ -1177,6 +1197,7 @@
           <div class="asub">Deletes every judge's scores and comments. Your rubric and teams stay. A backup of the scores is saved as a new tab in the Google Sheet.</div>
           <button class="reset-btn" id="reset-open">Reset all data</button>
         </div>`;
+      growAll();
     }
 
     // One card per kind of category: the main rubric, and the Impact Prize categories
@@ -1189,7 +1210,7 @@
           <h2>${prize ? 'Impact Prize categories' : 'Rubric categories'}</h2>
           <div class="asub">${prize
             ? 'Only for teams with "Include Impact Prize" ticked, kept separate from the main total. Judges see these as "Impact Prize: [name]", or just "Impact Prize" if there\'s no name.'
-            : 'Every team is scored on these. Name each category and set how many points it\'s worth.'}</div>
+            : 'Every team is scored on these. Name each category, set how many points it\'s worth, and add criteria (one per line) that judges can open with "Criteria ▾".'}</div>
           ${list.map((x, k) => `
             <div class="erow two">
               <span class="apos">${prize ? E.categories.filter(c => !c.prize).length + k + 1 : k + 1}</span>
@@ -1200,6 +1221,7 @@
                 <button class="icon" data-amove="cat:${x.i}:-1" ${k === 0 ? 'disabled' : ''} title="Move up">▲</button>
                 <button class="icon" data-amove="cat:${x.i}:1" ${k === list.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
               </div>
+              <textarea class="field crit-edit" data-cat-crit="${x.i}" placeholder="Criteria for judges, one per line (optional)" aria-label="Criteria">${escapeHtml(x.c.criteria || '')}</textarea>
             </div>`).join('')}
           ${prize && !list.length ? '<div class="totalnote" style="margin-top:0">No Impact Prize categories yet.</div>' : ''}
           <button class="add-line" id="${prize ? 'add-prize-cat' : 'add-cat'}" ${E.categories.length >= MAX_CATS ? 'disabled' : ''}>+ Add ${prize ? 'Impact Prize category' : 'category'}</button>
@@ -1221,8 +1243,15 @@
         c.name = (c.name || '').trim() || (c.prize ? '' : `Category ${i + 1}`);
         c.max = Math.max(1, Math.min(10, parseInt(c.max, 10) || 5));
         c.prize = !!c.prize;
+        const crit = criteriaOf(c).join('\n');
+        if (crit) c.criteria = crit; else delete c.criteria;
       });
       E.teams.forEach(t => { t.name = (t.name || '').trim(); });
+      // The Google Sheet script can store about 9 KB of setup
+      if (new Blob([JSON.stringify(E)]).size > 8800) {
+        adminErr = 'This setup is too long to save. Shorten some criteria or team names, then try again.';
+        renderAdmin(); return;
+      }
       adminSaving = true; adminErr = ''; adminMsg = ''; renderAdmin();
       if (!API_URL) {   // not connected (preview): apply on this device only
         applyConfig(E); adminEdit = clone(E); adminSaving = false;
@@ -1267,12 +1296,18 @@
       }
     }
 
+    // Comment and criteria boxes grow as you type
+    function growBox(t) { if (!t.offsetParent) return; t.style.height = 'auto'; t.style.height = (t.scrollHeight + 2) + 'px'; }
+    const growAll = () => document.querySelectorAll('textarea').forEach(growBox);
+
     // ================= EVENTS =================
     document.addEventListener('input', (e) => {
       const t = e.target, d = t.dataset;
       if (t.id === 'team-search') { teamQuery = t.value; renderTeams(); return; }
+      if (t.tagName === 'TEXTAREA') growBox(t);
       if (draft && t.id === 'best') draft.best = t.value;
       else if (draft && t.id === 'improve') draft.improve = t.value;
+      else if (adminEdit && d.catCrit !== undefined) { adminEdit.categories[d.catCrit].criteria = t.value; adminMsg = ''; updateAdminSave(); }
       else if (t.id === 'reset-confirm') $('reset-go').disabled = t.value.trim().toUpperCase() !== 'RESET';
       else if (adminEdit && d.catName !== undefined) { adminEdit.categories[d.catName].name = t.value; adminMsg = ''; updateAdminSave(); }
       else if (adminEdit && d.catMax !== undefined) { const v = parseInt(t.value, 10); if (v >= 1) adminEdit.categories[d.catMax].max = Math.min(10, v); adminMsg = ''; updateAdminSave(); }
@@ -1344,6 +1379,7 @@
         draft.notes = draft.notes.includes(d.note) ? draft.notes.filter(x => x !== d.note) : [...draft.notes, d.note];
         renderSheet(); return;
       }
+      if (draft && d.crit !== undefined) { critOpen.has(d.crit) ? critOpen.delete(d.crit) : critOpen.add(d.crit); renderSheet(); return; }
       if (draft && d.cat !== undefined) { draft.scores[d.cat] = Number(d.val); renderSheet(); return; }
       if (el.id === 'save-score') { saveScore(); return; }
       if (el.id === 'close-sheet') { closeSheet(); return; }
