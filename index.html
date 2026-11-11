@@ -437,7 +437,41 @@
     const trackOf = id => { const t = teams().find(x => x.id === String(id)); return t && t.track ? t.track : ''; };
 
     // Criteria: what to look for in a category, one per line. Anything from "e.g." on shows in smaller grey text.
-    const criteriaOf = c => String(c.criteria || '').split('\n').map(x => x.trim()).filter(Boolean);
+    // For now the criteria are fixed here (JAM Challenge Round rubric), matched by position:
+    // the 1st, 2nd and 3rd rubric categories, and the 1st Impact Prize category.
+    // To let Admin edit them later, set ADMIN_CRITERIA = true.
+    const ADMIN_CRITERIA = false;
+    const FIXED_CRITERIA = {
+      main: [
+        ['Is the problem clearly articulated?',
+         'Is this a widespread problem that needs to be solved?',
+         'Is there a clearly defined target user?',
+         'Is there a clearly defined primary persona?',
+         'Is there a clear positive impact on the primary persona?'],
+        ['Does this product address the problem being solved?',
+         'Is there a well-defined "need to have" value proposition?',
+         'Does the product/demo show good user flow?',
+         'Did they share what technologies will be utilized in their solution?',
+         'Will the positive impact scale with the product?'],
+        ['Have they identified a clear opportunity or gap in the existing market?',
+         'Is this solution unique? If not, do they differentiate themselves well compared to competitors?',
+         'Is there a large market to serve?',
+         'Is there a clear pricing strategy and revenue model?',
+         'Did they articulate a clear Mission and Vision for their solution?']
+      ],
+      prize: [
+        ["What is your solution's impact in terms of the products and/or services you will be offering? e.g. Does the solution make money when its users succeed, or when they're hooked or overcharged?",
+         "What is your solution's impact in terms of its practices (how it operates behind the scenes)? e.g. How are you handling areas such as data, AI, suppliers and computing?",
+         "What is your solution's impact in terms of your people (how it treats the people who build and run it)? e.g. How does it treat the people who make it work? Is your solution built to leave communities and/or the environment healthier and stronger?",
+         "What is your solution's impact in terms of the public (how it affects society beyond its customers)? e.g. Who outside the customer base is affected, for better or worse?",
+         'What specific outcome metrics would you use to know you are having your desired impact? e.g. For a literacy edtech app: specifically tracking user Fall/Spring reading scores, user reported interest in reading']
+      ]
+    };
+    const criteriaOf = c => {
+      if (ADMIN_CRITERIA) return String(c.criteria || '').split('\n').map(x => x.trim()).filter(Boolean);
+      const same = c.prize ? prizeCats() : mainCats();
+      return (c.prize ? FIXED_CRITERIA.prize : FIXED_CRITERIA.main)[same.findIndex(x => x.id === c.id)] || [];
+    };
     let critOpen = new Set();   // categories whose Criteria list is open on the score screen
     const catLabel = c => c.prize ? ((c.name || '').trim() ? `Impact Prize: ${c.name.trim()}` : 'Impact Prize') : c.name;
     const mainCats = () => cats().filter(c => !c.prize);
@@ -1210,7 +1244,7 @@
           <h2>${prize ? 'Impact Prize categories' : 'Rubric categories'}</h2>
           <div class="asub">${prize
             ? 'Only for teams with "Include Impact Prize" ticked, kept separate from the main total. Judges see these as "Impact Prize: [name]", or just "Impact Prize" if there\'s no name.'
-            : 'Every team is scored on these. Name each category, set how many points it\'s worth, and add criteria (one per line) that judges can open with "Criteria ▾".'}</div>
+            : 'Every team is scored on these. Name each category and set how many points it\'s worth.'}</div>
           ${list.map((x, k) => `
             <div class="erow two">
               <span class="apos">${prize ? E.categories.filter(c => !c.prize).length + k + 1 : k + 1}</span>
@@ -1221,7 +1255,7 @@
                 <button class="icon" data-amove="cat:${x.i}:-1" ${k === 0 ? 'disabled' : ''} title="Move up">▲</button>
                 <button class="icon" data-amove="cat:${x.i}:1" ${k === list.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
               </div>
-              <textarea class="field crit-edit" data-cat-crit="${x.i}" placeholder="Criteria for judges, one per line (optional)" aria-label="Criteria">${escapeHtml(x.c.criteria || '')}</textarea>
+              ${ADMIN_CRITERIA ? `<textarea class="field crit-edit" data-cat-crit="${x.i}" placeholder="Criteria for judges, one per line (optional)" aria-label="Criteria">${escapeHtml(x.c.criteria || '')}</textarea>` : ''}
             </div>`).join('')}
           ${prize && !list.length ? '<div class="totalnote" style="margin-top:0">No Impact Prize categories yet.</div>' : ''}
           <button class="add-line" id="${prize ? 'add-prize-cat' : 'add-cat'}" ${E.categories.length >= MAX_CATS ? 'disabled' : ''}>+ Add ${prize ? 'Impact Prize category' : 'category'}</button>
@@ -1243,8 +1277,7 @@
         c.name = (c.name || '').trim() || (c.prize ? '' : `Category ${i + 1}`);
         c.max = Math.max(1, Math.min(10, parseInt(c.max, 10) || 5));
         c.prize = !!c.prize;
-        const crit = criteriaOf(c).join('\n');
-        if (crit) c.criteria = crit; else delete c.criteria;
+        if (ADMIN_CRITERIA) { const crit = criteriaOf(c).join('\n'); if (crit) c.criteria = crit; else delete c.criteria; }
       });
       E.teams.forEach(t => { t.name = (t.name || '').trim(); });
       // The Google Sheet script can store about 9 KB of setup
