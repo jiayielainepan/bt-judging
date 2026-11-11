@@ -49,9 +49,11 @@ function doPost(e) {
     const teamId = String(d.teamId || String(d.team || '').replace(/\D/g, ''));
     const slots = Array.isArray(d.slots) ? d.slots : (d.scores || []);   // older app versions send 5 scores
     const scoreCells = Array.from({ length: MAX_CATEGORIES }, (_, i) => slots[i] === undefined ? '' : slots[i]);
+    // Track and Impact Prize come from the Admin setup, so they're right even if a judge's app is out of date
+    const extra = teamExtras(getConfig(), teamId, d.scoresJson);
     const row = [
-      new Date(), d.judge, d.team, d.track || '', d.gut,
-      d.total, d.maxTotal || '', d.prizeTotal === undefined ? '' : d.prizeTotal, d.prizeMax || '',
+      new Date(), d.judge, d.team, extra.track || d.track || '', d.gut,
+      d.total, d.maxTotal || '', extra.prizeTotal, extra.prizeMax,
       ...scoreCells,
       d.keep, d.work, d.best, d.improve,
       teamId, d.device, d.scoresJson || ''
@@ -91,8 +93,44 @@ function saveConfig(key, config) {
   if (String(key || '') !== ADMIN_PASSWORD) return reply({ ok: false, error: 'wrong-password' });
   if (!config || !Array.isArray(config.categories) || !Array.isArray(config.teams)) return reply({ ok: false, error: 'bad-config' });
   PropertiesService.getScriptProperties().setProperty('config', JSON.stringify(config));
-  setScoreTitles(getSheet(), sheetCategories(config).map(categoryLabel));
+  const sheet = getSheet();
+  setScoreTitles(sheet, sheetCategories(config).map(categoryLabel));
+  refreshTeamColumns(sheet, config);
   return reply({ ok: true });
+}
+
+// A team's track and Impact Prize total/max, from the Admin setup and the judge's scores
+function teamExtras(config, teamId, scoresJson) {
+  const out = { track: '', prizeTotal: '', prizeMax: '' };
+  if (!config) return out;
+  const team = config.teams.find(t => String(t.id) === String(teamId));
+  if (!team) return out;
+  out.track = team.track || '';
+  const prizeCats = config.categories.filter(c => c.prize);
+  if (team.prize && prizeCats.length) {
+    let scores = {};
+    try { scores = JSON.parse(scoresJson || '') || {}; } catch (e) {}
+    out.prizeTotal = prizeCats.reduce((a, c) => a + (Number(scores[c.id]) || 0), 0);
+    out.prizeMax = prizeCats.reduce((a, c) => a + Number(c.max), 0);
+  }
+  return out;
+}
+
+// After an Admin save: fill in Track and Impact Prize for rows already in the Sheet
+function refreshTeamColumns(sheet, config) {
+  const last = sheet.getLastRow();
+  if (last < 2) return;
+  const data = sheet.getRange(2, 1, last - 1, HEADERS.length).getValues();
+  let changed = false;
+  data.forEach(r => {
+    const x = teamExtras(config, r[col('Team ID')], r[col('Scores JSON')]);
+    const vals = [[col('Track'), x.track], [col('Impact Prize total'), x.prizeTotal], [col('Impact Prize max'), x.prizeMax]];
+    vals.forEach(([i, v]) => { if (String(r[i]) !== String(v)) { r[i] = v; changed = true; } });
+  });
+  if (changed) {
+    sheet.getRange(2, col('Track') + 1, data.length, 1).setValues(data.map(r => [r[col('Track')]]));
+    sheet.getRange(2, col('Impact Prize total') + 1, data.length, 2).setValues(data.map(r => [r[col('Impact Prize total')], r[col('Impact Prize max')]]));
+  }
 }
 
 // Score column order: rubric categories first, then Impact Prize categories (same as the app)
@@ -164,14 +202,10 @@ function moveToNewLayout(ss, oldSheet) {
     try { scores = JSON.parse(r[old('Scores JSON')] || '') || {}; } catch (e) {}
     if (!Object.keys(scores).length) for (let c = 1; c <= 5; c++) if (r[old('Category ' + c)] !== '') scores[c] = r[old('Category ' + c)];
     const teamId = String(r[old('Team ID')] || String(r[old('Team')]).replace(/\D/g, ''));
-    const team = config ? config.teams.find(t => String(t.id) === teamId) : null;
-    const prizeCats = config ? config.categories.filter(c => c.prize) : [];
-    const hasPrize = !!(team && team.prize && prizeCats.length);
+    const extra = teamExtras(config, teamId, JSON.stringify(scores));
     return [
-      r[old('Last updated')], r[old('Judge')], r[old('Team')], (team && team.track) || '', r[old('Gut check')],
-      r[old('Total')], r[old('Max total')],
-      hasPrize ? prizeCats.reduce((a, c) => a + (Number(scores[c.id]) || 0), 0) : '',
-      hasPrize ? prizeCats.reduce((a, c) => a + Number(c.max), 0) : '',
+      r[old('Last updated')], r[old('Judge')], r[old('Team')], extra.track, r[old('Gut check')],
+      r[old('Total')], r[old('Max total')], extra.prizeTotal, extra.prizeMax,
       ...Array.from({ length: MAX_CATEGORIES }, (_, i) => order[i] !== undefined && scores[order[i]] !== undefined ? scores[order[i]] : ''),
       r[old('Keep doing')], r[old('Work on')], r[old('What worked')], r[old('What to improve')],
       teamId, r[old('Device ID')], JSON.stringify(scores)
