@@ -226,6 +226,9 @@
     .viewbar select { font: inherit; font-size: 15px; font-weight: 600; padding: 8px 12px; border-radius: 10px; border: 1.5px solid var(--blue); background: #fff; color: var(--blue); }
     .sample-btn { font-size: 13px; font-weight: 600; color: var(--blue); border: 1px dashed var(--blue); border-radius: 10px; padding: 6px 10px; }
     .prize-tag { display: inline-block; font-size: 11.5px; font-weight: 600; color: var(--blue); background: var(--maize-soft); border: 1px solid #f1d58a; border-radius: 999px; padding: 1px 8px; }
+    .searchbar { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 4px 0 10px; }
+    .searchbar input { font-size: 16px; padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--line); }
+    .no-match { color: var(--muted); text-align: center; padding: 18px 0; margin: 0; }
     .prize-total { margin-top: 4px; font-size: 14px; color: var(--muted); }
     .bulk { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; font-size: 13.5px; color: var(--muted); }
     .bulk input { width: 64px; flex: none; text-align: center; padding: 7px 8px; font-size: 15px; border-radius: 10px; }
@@ -325,6 +328,9 @@
       <p class="sync" id="sync-status"></p>
       <div class="list-head">
         <h2 id="team-count">Teams</h2>
+      </div>
+      <div class="searchbar">
+        <input id="team-search" type="search" placeholder="Find a team: number, name or track" autocomplete="off" aria-label="Find a team">
       </div>
       <div id="team-list"></div>
     </section>
@@ -650,9 +656,24 @@
       showSyncStatus();
     }
 
+    // Search: matches the team number, name or track. An exact number match is listed first.
+    let teamQuery = '';
+    function matchingTeams() {
+      const q = teamQuery.trim().toLowerCase().replace(/^team\s*/, '');
+      const all = teams().map((t, i) => ({ t, i }));
+      if (!q) return all;
+      const hits = all.filter(({ t, i }) =>
+        String(i + 1).startsWith(q) ||
+        (t.name || '').toLowerCase().includes(q) ||
+        (t.track || '').toLowerCase().includes(q));
+      return hits.sort((a, b) => (String(b.i + 1) === q) - (String(a.i + 1) === q));
+    }
+
     function renderTeams() {
-      $('team-count').textContent = `Teams (${teams().length})`;
-      $('team-list').innerHTML = teams().map((t, i) => {
+      const shown = matchingTeams();
+      $('team-count').textContent = teamQuery.trim() ? `Teams (${shown.length} of ${teams().length})` : `Teams (${teams().length})`;
+      if (!shown.length) { $('team-list').innerHTML = `<p class="no-match">No team matches "${escapeHtml(teamQuery.trim())}".</p>`; return; }
+      $('team-list').innerHTML = shown.map(({ t, i }) => {
         const entry = allScores[t.id];
         const status = entry
           ? `<span class="status ${entry.tier || 'done'}">${entry.tier ? tierOf(entry.tier).label + ' · ' : ''}${totalOf(entry)}/${maxTotal()}</span>`
@@ -776,6 +797,7 @@
       restoreNote = '';
       queueScore(draft.team, allScores[draft.team]);
       draft = null;
+      teamQuery = ''; if ($('team-search')) $('team-search').value = '';
       renderSheet();
       renderTeams();
     }
@@ -1237,6 +1259,7 @@
     // ================= EVENTS =================
     document.addEventListener('input', (e) => {
       const t = e.target, d = t.dataset;
+      if (t.id === 'team-search') { teamQuery = t.value; renderTeams(); return; }
       if (draft && t.id === 'best') draft.best = t.value;
       else if (draft && t.id === 'improve') draft.improve = t.value;
       else if (t.id === 'reset-confirm') $('reset-go').disabled = t.value.trim().toUpperCase() !== 'RESET';
@@ -1252,6 +1275,15 @@
       else if (adminEdit && d.teamPrize !== undefined) { adminEdit.teams[d.teamPrize].prize = e.target.checked; adminMsg = ''; renderAdmin(); }
       else if (e.target.id === 'panel-view') { panelView = e.target.value; closePanelTeam(); renderPanel(); }
       else if (adminEdit && d.teamTrack !== undefined) { adminEdit.teams[d.teamTrack].track = e.target.value; adminMsg = ''; updateAdminSave(); }
+    });
+
+    $('team-search').addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const shown = matchingTeams(), q = teamQuery.trim().toLowerCase().replace(/^team\s*/, '');
+      const exact = shown.find(({ i }) => String(i + 1) === q);
+      const pick = exact || (shown.length === 1 ? shown[0] : null);
+      if (pick) { e.target.blur(); openTeam(pick.t.id); }
     });
 
     nameInput.addEventListener('input', () => { continueBtn.disabled = nameInput.value.trim().length < 2; });
