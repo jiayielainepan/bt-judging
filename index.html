@@ -216,11 +216,14 @@
     .total { display: flex; justify-content: space-between; align-items: baseline; margin: 16px 2px 0; font-weight: 600; }
     .total b { font-size: 22px; }
     .status.done { background: #e3f4ea; color: #18794e; }
+    .fb-hint { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .cat-head .req { color: var(--blue); background: var(--maize-soft); border-radius: 999px; padding: 1px 8px; font-weight: 600; font-size: 12px; }
+    .tick { margin-left: 4px; }
     .group { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin: 12px 0 6px; }
     .group.keep { color: #18794e; }
     .group.work { color: #b54708; }
     .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-    .chip { padding: 7px 12px; border-radius: 999px; font-size: 14px; border: 1px dashed #cfcac0; background: #fff; }
+    .chip { padding: 6px 10px; border-radius: 999px; font-size: 13px; border: 1px dashed #c6ced8; background: #fff; }
     .chip.keep.on { background: #e3f4ea; border: 1px solid #18794e; color: #18794e; }
     .chip.work.on { background: #fdeee3; border: 1px solid #b54708; color: #b54708; }
     .field-label { font-size: 14px; font-weight: 600; margin-top: 14px; }
@@ -343,18 +346,24 @@
 
     // Quick-tap notes: specific things a score can't tell a team. All optional.
     const NOTES = [
-      { id: 'demo',   type: 'keep', text: 'Strong live demo' },
-      { id: 'evid',   type: 'keep', text: 'Real customer evidence' },
-      { id: 'qa',     type: 'keep', text: 'Handled Q&A well' },
-      { id: 'story',  type: 'keep', text: 'Memorable story' },
-      { id: 'ask',    type: 'keep', text: 'Clear, specific ask' },
-      { id: 'team',   type: 'keep', text: 'Team fits the problem' },
-      { id: 'nevid',  type: 'work', text: 'Show customer evidence' },
-      { id: 'rev',    type: 'work', text: 'Explain how you make money' },
-      { id: 'comp',   type: 'work', text: 'Address competitors' },
-      { id: 'time',   type: 'work', text: 'Ran over time' },
-      { id: 'slides', type: 'work', text: 'Too much text on slides' },
-      { id: 'nask',   type: 'work', text: 'Make the ask specific' }
+      // Keep doing
+      { id: 'k-problem', type: 'keep', text: 'Clear, real problem' },
+      { id: 'k-user',    type: 'keep', text: 'Well-defined target user' },
+      { id: 'k-solves',  type: 'keep', text: 'Product solves the problem' },
+      { id: 'k-demo',    type: 'keep', text: 'Smooth demo & user flow' },
+      { id: 'k-unique',  type: 'keep', text: 'Stands out from competitors' },
+      { id: 'k-revenue', type: 'keep', text: 'Clear revenue model' },
+      { id: 'k-impact',  type: 'keep', text: 'Strong impact on users' },
+      { id: 'k-next',    type: 'keep', text: 'Clear next steps' },
+      // Work on
+      { id: 'w-problem', type: 'work', text: 'Make the problem more specific' },
+      { id: 'w-user',    type: 'work', text: 'Define the target user' },
+      { id: 'w-demo',    type: 'work', text: 'Show more of the product' },
+      { id: 'w-tech',    type: 'work', text: 'Explain the technology' },
+      { id: 'w-comp',    type: 'work', text: 'Address competitors' },
+      { id: 'w-revenue', type: 'work', text: 'Explain how you make money' },
+      { id: 'w-market',  type: 'work', text: 'Show the market size' },
+      { id: 'w-next',    type: 'work', text: 'Add next steps & milestones' }
     ];
 
     // ---------- Helpers ----------
@@ -642,10 +651,13 @@
       const keepScroll = oldSheet ? oldSheet.scrollTop : 0;
       const isScored = c => draft.scores[c.id] !== undefined && draft.scores[c.id] !== null && draft.scores[c.id] !== '';
       const left = cats().filter(c => !isScored(c)).length;
-      const ready = left === 0 && !!draft.tier;
+      const hasKeep = hasNote(draft, 'keep'), hasWork = hasNote(draft, 'work');
+      const ready = left === 0 && !!draft.tier && hasKeep && hasWork;
       const missing = [];
       if (left) missing.push(`${left} more ${left === 1 ? 'category' : 'categories'}`);
-      if (!draft.tier) missing.push('gut check');
+      if (!hasKeep) missing.push('a "Keep doing" bubble');
+      if (!hasWork) missing.push('a "Work on" bubble');
+      if (!draft.tier) missing.push('the gut check');
       const total = totalOf(draft);
       const label = teamLabel(draft.team);
 
@@ -675,14 +687,16 @@
             </div>
             ${catHtml}
             <div class="cat">
-              <div class="cat-head">Feedback for the team <span>all optional</span></div>
-              <div class="group keep">Keep doing</div>
+              <div class="cat-head">Feedback for the team</div>
+              <div class="fb-hint">Pick at least one of each.</div>
+              <div class="group keep">Keep doing ${hasKeep ? '<span class="tick">✓</span>' : ''}</div>
               <div class="chips">${noteChips('keep')}</div>
-              <div class="group work">Work on</div>
+              <div class="group work">Work on ${hasWork ? '<span class="tick">✓</span>' : ''}</div>
               <div class="chips">${noteChips('work')}</div>
             </div>
             <div class="cat">
-              <div class="cat-head">In your own words <span>optional</span></div>
+              <div class="cat-head">In your own words <span>encouraged</span></div>
+              <div class="fb-hint">Teams learn the most from a sentence in your own words. Even one line makes a big difference.</div>
               <div class="field-label">What worked</div>
               <textarea id="best" maxlength="250" placeholder="The best part of your presentation was…">${escapeHtml(draft.best)}</textarea>
               <div class="field-label">What to improve</div>
@@ -694,7 +708,7 @@
             </div>
             <div class="total"><span>Total</span><b>${total} / ${maxTotal()}</b></div>
             <button class="primary" id="save-score" ${ready ? '' : 'disabled'}>
-              ${ready ? 'Save' : `To save, add: ${missing.join(' and ')}`}
+              ${ready ? 'Save' : `To save, add: ${missing.length > 1 ? missing.slice(0, -1).join(', ') + ' and ' + missing.at(-1) : missing[0]}`}
             </button>
           </div>
         </div>`;
@@ -705,13 +719,14 @@
     function noteChips(type) {
       return NOTES.filter(n => n.type === type).map(n => {
         const on = draft.notes.includes(n.id) ? 'on' : '';
-        const sign = type === 'keep' ? '+' : '−';
-        return `<button class="chip ${type} ${on}" data-note="${n.id}">${sign} ${n.text}</button>`;
+        return `<button class="chip ${type} ${on}" data-note="${n.id}">${n.text}</button>`;
       }).join('');
     }
 
+    function hasNote(d, type) { return d.notes.some(id => NOTES.some(n => n.id === id && n.type === type)); }
+
     function saveScore() {
-      if (!draft || cats().some(c => draft.scores[c.id] === undefined || draft.scores[c.id] === null || draft.scores[c.id] === '') || !draft.tier) return;
+      if (!draft || cats().some(c => draft.scores[c.id] === undefined || draft.scores[c.id] === null || draft.scores[c.id] === '') || !draft.tier || !hasNote(draft, 'keep') || !hasNote(draft, 'work')) return;
       const previous = allScores[draft.team];
       allScores[draft.team] = {
         savedAt: Date.now(),
@@ -886,7 +901,7 @@
       };
       const keepNotes = tally('keep'), workNotes = tally('work');
       const noteList = (list, type) => list.map(([t, n]) =>
-        `<span class="nchip ${type}">${type === 'keep' ? '+' : '−'} ${escapeHtml(t)}<small>${n} judge${n > 1 ? 's' : ''}</small></span>`).join('');
+        `<span class="nchip ${type}">${escapeHtml(t)}<small>${n} judge${n > 1 ? 's' : ''}</small></span>`).join('');
       $('panel-modal').innerHTML = `
         <div class="pm-bg" id="pm-bg"><div class="pm">
           <div class="sheet-top" style="margin-bottom:12px"><h2>${escapeHtml(teamLabel(team))}</h2><button class="cancel" id="pm-close">Close</button></div>
