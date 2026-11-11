@@ -246,6 +246,7 @@
     .crit-list { margin: 8px 0 0; padding: 8px 10px 8px 26px; background: #F7F9FB; border-radius: 10px; font-size: 13px; color: #33475B; }
     .crit-list li { margin: 3px 0; }
     .crit-list .eg { display: block; color: var(--muted); font-size: 12px; }
+    .erow .crit-edit[readonly] { background: #F7F9FB; color: var(--muted); resize: none; }
     .erow .crit-edit { flex-basis: 100%; margin: 0 0 0 38px; min-height: 64px; font-size: 14px; padding: 9px 11px; border-radius: 10px; width: calc(100% - 38px); }
     .cat-head .req { color: var(--blue); background: var(--maize-soft); border-radius: 999px; padding: 1px 8px; font-weight: 600; font-size: 12px; }
     .tick { margin-left: 4px; }
@@ -1244,7 +1245,7 @@
           <h2>${prize ? 'Impact Prize categories' : 'Rubric categories'}</h2>
           <div class="asub">${prize
             ? 'Only for teams with "Include Impact Prize" ticked, kept separate from the main total. Judges see these as "Impact Prize: [name]", or just "Impact Prize" if there\'s no name.'
-            : 'Every team is scored on these. Name each category and set how many points it\'s worth.'}</div>
+            : 'Every team is scored on these. Name each category and set how many points it\'s worth.'}${ADMIN_CRITERIA ? '' : ' Criteria are fixed for the Challenge Round (view only).'}</div>
           ${list.map((x, k) => `
             <div class="erow two">
               <span class="apos">${prize ? E.categories.filter(c => !c.prize).length + k + 1 : k + 1}</span>
@@ -1255,7 +1256,8 @@
                 <button class="icon" data-amove="cat:${x.i}:-1" ${k === 0 ? 'disabled' : ''} title="Move up">▲</button>
                 <button class="icon" data-amove="cat:${x.i}:1" ${k === list.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
               </div>
-              ${ADMIN_CRITERIA ? `<textarea class="field crit-edit" data-cat-crit="${x.i}" placeholder="Criteria for judges, one per line (optional)" aria-label="Criteria">${escapeHtml(x.c.criteria || '')}</textarea>` : ''}
+              ${ADMIN_CRITERIA ? `<textarea class="field crit-edit" data-cat-crit="${x.i}" placeholder="Criteria for judges, one per line (optional)" aria-label="Criteria">${escapeHtml(x.c.criteria || '')}</textarea>`
+                : `<textarea class="field crit-edit" readonly placeholder="No criteria for this category" aria-label="Criteria (view only)" title="Fixed for the Challenge Round">${escapeHtml(criteriaOf(x.c).join('\n'))}</textarea>`}
             </div>`).join('')}
           ${prize && !list.length ? '<div class="totalnote" style="margin-top:0">No Impact Prize categories yet.</div>' : ''}
           <button class="add-line" id="${prize ? 'add-prize-cat' : 'add-cat'}" ${E.categories.length >= MAX_CATS ? 'disabled' : ''}>+ Add ${prize ? 'Impact Prize category' : 'category'}</button>
