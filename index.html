@@ -969,11 +969,16 @@
         const j = judges.find(x => x.jk === e.jk);
         if (j) j.name = e.judge; else judges.push({ jk: e.jk, name: e.judge });
       });
-      // z-score: how far above/below that judge's own average a team scored
+      // z-score: how far above/below that judge's own average a team scored.
+      // A judge who has scored only 1 team has nothing to compare against, so until they score
+      // a second, their score is compared with every judge's scores instead.
+      const allM = avgOf(entries.map(e => e.total));
+      const allSd = Math.sqrt(avgOf(entries.map(e => (e.total - allM) ** 2)));
       judges.forEach(j => {
         const mine = entries.filter(e => e.jk === j.jk);
-        const m = avgOf(mine.map(e => e.total));
-        const sd = Math.sqrt(avgOf(mine.map(e => (e.total - m) ** 2)));
+        const one = mine.length === 1;
+        const m = one ? allM : avgOf(mine.map(e => e.total));
+        const sd = one ? allSd : Math.sqrt(avgOf(mine.map(e => (e.total - m) ** 2)));
         j.n = mine.length; j.avg = m;
         j.byTeam = {};
         mine.forEach(e => j.byTeam[e.team] = { total: e.total, gut: e.gut, z: sd > 0 ? (e.total - m) / sd : 0 });
