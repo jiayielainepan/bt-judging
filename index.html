@@ -78,7 +78,7 @@
     .pcard h2 { font-size: 17px; margin: 0; }
     .pscroll { overflow-x: auto; margin-top: 10px; }
     .ptable { width: 100%; border-collapse: collapse; font-size: 14px; }
-    .ptable th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 8px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    .ptable th { text-align: left; font-size: 12px; line-height: 1.3; color: var(--muted); font-weight: 600; padding: 8px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: middle; }
     .ptable td { padding: 10px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
     .ptable tr[data-pteam] { cursor: pointer; }
     .ptable tr[data-pteam]:hover td { background: #faf9f6; }
@@ -474,6 +474,11 @@
       return (c.prize ? FIXED_CRITERIA.prize : FIXED_CRITERIA.main)[same.findIndex(x => x.id === c.id)] || [];
     };
     let critOpen = new Set();   // categories whose Criteria list is open on the score screen
+    // Panel column titles: first name on top, the rest below ("Phil" / "Brabbs"); one-word names stay centered
+    const stackName = name => {
+      const parts = String(name || '').trim().split(/\s+/);
+      return parts.length > 1 ? `${escapeHtml(parts[0])}<br>${escapeHtml(parts.slice(1).join(' '))}` : escapeHtml(parts[0] || '');
+    };
     const catLabel = c => c.prize ? ((c.name || '').trim() ? `Impact Prize: ${c.name.trim()}` : 'Impact Prize') : c.name;
     const mainCats = () => cats().filter(c => !c.prize);
     const prizeCats = () => cats().filter(c => c.prize);
@@ -1020,8 +1025,8 @@
       const D = panelStats();
       const table = D.rows.length ? `
         <div class="pscroll"><table class="ptable">
-          <thead><tr><th>#</th><th>Team</th>${D.judges.map(j => `<th class="c">${escapeHtml(j.name)}</th>`).join('')}
-            <th class="c">Avg total</th><th class="c">Z-score</th><th class="c">Standout votes</th></tr></thead>
+          <thead><tr><th>#</th><th>Team</th>${D.judges.map(j => `<th class="c">${stackName(j.name)}</th>`).join('')}
+            <th class="c">Avg<br>total</th><th class="c">Z-score</th><th class="c">Standout<br>votes</th></tr></thead>
           <tbody>${D.rows.map((x, i) => `
             <tr data-pteam="${escapeHtml(x.team)}">
               <td><b>${i + 1}</b></td>
@@ -1053,7 +1058,7 @@
         ${D.prizeRows.length ? `
         <div class="pcard" style="margin-top:14px"><h2>Impact Prize${panelView === 'all' ? '' : ` · ${panelView} Track`}</h2>
           <div class="pscroll"><table class="ptable">
-            <thead><tr><th>#</th><th>Team</th>${D.judges.map(j => `<th class="c">${escapeHtml(j.name)}</th>`).join('')}<th class="c">Avg (out of ${prizeMax()})</th></tr></thead>
+            <thead><tr><th>#</th><th>Team</th>${D.judges.map(j => `<th class="c">${stackName(j.name)}</th>`).join('')}<th class="c">Avg (out of ${prizeMax()})</th></tr></thead>
             <tbody>${D.prizeRows.map((x, i) => `
               <tr data-pteam="${escapeHtml(x.team)}">
                 <td><b>${i + 1}</b></td>
