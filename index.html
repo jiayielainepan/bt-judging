@@ -409,6 +409,8 @@
     const $ = (id) => document.getElementById(id);
     const escapeHtml = text => String(text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
     const nameKey = name => String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    // Panel: the same judge typed slightly differently ("M.S. Krishnan" / "M S Krishnan") counts as one judge
+    const judgeKey = name => nameKey(String(name || '').replace(/[.,'’\-]/g, ' '));
     const avgOf = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
     const clone = x => JSON.parse(JSON.stringify(x));
 
@@ -945,7 +947,7 @@
     function panelEntries() {
       const latest = {};
       (panelRows || []).forEach(r => {
-        const jk = nameKey(r['Judge']);
+        const jk = judgeKey(r['Judge']);
         const team = rowTeamId(r);
         if (!jk || !team || teamIndex(team) < 0) return;   // skip teams removed in Admin
         const ts = Date.parse(r['Last updated']) || 0;
