@@ -638,7 +638,7 @@
         if (!out.ok || forName !== judgeName) return;   // judge changed while loading
         applyReset(out.resetAt);
         if (out.config && !draft) applyConfig(out.config);
-        const mine = (out.rows || []).filter(r => nameKey(r['Judge']) === nameKey(forName));
+        const mine = (out.rows || []).filter(r => judgeKey(r['Judge']) === judgeKey(forName));
         let restored = 0;
         mine.forEach(r => {
           const tid = rowTeamId(r);
