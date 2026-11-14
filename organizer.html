@@ -6,70 +6,104 @@
 <meta name="robots" content="noindex">
 <title>Audience Choice: Organizer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{--bg:#f5f4f0;--card:#fff;--ink:#1b1d24;--muted:#6b6f7b;--line:#e3e1db;--accent:#2b3fd6;--accent-soft:#e8ebff;
-        --gold:#b7791f;--gold-soft:#fdf3e1;--ok:#1f7a4d;--warn:#a33a1f;--warn-soft:#fbe9e4}
+  :root{
+    /* Innovation Jam logo colors */
+    --blue:#0C3662; --blue-deep:#062F58; --blue-light:#2C61A1;
+    --maize:#F1C319; --maize-soft:#FDF4CF;
+    --bg:#F3F5F8; --card:#fff; --ink:#0C3662; --muted:#5B6B7F; --line:#DDE3EA;
+    --accent:#0C3662; --accent-soft:#E4EBF4;
+    --ok:#18794e; --ok-soft:#e3f4ea; --danger:#b42318; --danger-soft:#fde8e7;
+  }
   *{box-sizing:border-box}
-  body{margin:0;font-family:"DM Sans",system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
-  button{font:inherit;cursor:pointer;color:inherit}
-  .wrap{max-width:900px;margin:0 auto;padding:24px 16px 60px}
-  .narrow{max-width:360px}
-  .eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:6px 0 2px}
-  h1{font-size:26px;line-height:1.15;margin:0 0 6px;letter-spacing:-.01em}
-  h2{font-size:17px;margin:0 0 10px}
-  p.sub{color:var(--muted);margin:0 0 18px;font-size:15px;line-height:1.45}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px}
-  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.45}
+  button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+  header{background:var(--blue);color:#fff;padding:10px 16px;font-weight:700;border-bottom:4px solid var(--maize)}
+  .hbar{display:flex;align-items:center;gap:12px;max-width:1100px;margin:0 auto}
+  .brand{display:flex;align-items:center;min-width:0}
+  .brand img{height:46px;width:auto;flex:none;display:block}
+  .hright{margin-left:auto;font-size:13px;font-weight:600;color:var(--blue);background:var(--maize);border-radius:999px;padding:4px 12px}
+  h1{font-size:24px;margin:0 0 6px}
+  h2{font-size:17px;margin:0}
+  p{margin:0 0 20px;color:var(--muted)}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px 20px}
+  .link{color:var(--accent);font-size:14px;font-weight:600;padding:4px 0}
+  @media (max-width:400px){ .brand img{height:40px} }
+  main{max-width:1100px;margin:0 auto;padding:24px 20px 60px}
+  .lockbox{max-width:400px;margin:30px auto 0}
+  label{display:block;font-weight:600;font-size:14px;margin-bottom:6px}
+  input{width:100%;font:inherit;font-size:17px;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
+  input:focus{outline:3px solid var(--maize-soft);border-color:var(--maize)}
+  .primary{width:100%;margin-top:16px;padding:14px;border-radius:12px;background:var(--maize);color:var(--blue);font-weight:700}
+  .err{color:var(--danger);font-size:14px;margin:10px 0 0}
+  .ptop{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .ptop h1{margin:0}
+  .live{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+  .live .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.2)}
+  .ptop .right{margin-left:auto;display:flex;gap:16px}
+  .lock-btn{color:var(--muted);font-size:13px;font-weight:600}
   .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
-  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
-  .stat b{display:block;font-size:24px}
-  .stat span{font-size:12px;color:var(--muted)}
-  .ghost{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 13px;font-size:14px}
-  .ghost.danger{color:var(--warn)}
-  .primary{border:0;border-radius:12px;padding:13px 16px;background:var(--accent);color:#fff;font-weight:700;font-size:16px;width:100%}
-  .link{background:none;border:0;color:var(--accent);padding:0;font-size:14px}
-  .link.danger{color:var(--warn);font-size:12px}
-  input.text{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;font-size:15px;width:100%}
-  .pin{font-size:28px;letter-spacing:.4em;text-align:center}
-  .err{color:var(--warn);font-size:14px;margin:8px 0 0}
-  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:12px}
-  th{text-align:left;font-weight:500;color:var(--muted);font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line)}
-  td{padding:11px 6px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
-  th.n,td.n{text-align:right}
-  tr.win td{background:var(--gold-soft)}
-  .badge{display:inline-block;font-size:11px;font-weight:700;color:var(--gold);border:1px solid #ecc98a;border-radius:999px;padding:1px 8px;margin-left:6px;background:#fff}
-  .tie{color:var(--warn);font-size:14px;margin-top:12px;background:var(--warn-soft);padding:10px 12px;border-radius:10px}
-  .foot{font-size:13px;color:var(--muted);line-height:1.5;margin-top:12px}
-  .switch{display:flex;align-items:center;gap:10px;font-size:15px}
-  .switch button{width:46px;height:26px;border-radius:999px;border:0;background:#c5c8d4;position:relative;flex:none}
+  .stat{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--maize);border-radius:14px;padding:14px 16px}
+  .stat b{display:block;font-size:28px;line-height:1.15;color:var(--blue)}
+  .stat span{font-size:13px;color:var(--muted)}
+  .pcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+  .phead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .pscroll{overflow-x:auto;margin-top:10px}
+  .ptable{width:100%;border-collapse:collapse;font-size:14px}
+  .ptable th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+  .ptable td{padding:10px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+  .ptable .c{text-align:center;font-variant-numeric:tabular-nums}
+  .ptable tr.win td{background:var(--maize-soft)}
+  .tlink{font-weight:600}
+  .zv{font-weight:700}
+  .znote{font-size:12px;color:var(--muted);margin:10px 0 0}
+  .znote.tie{color:var(--danger);font-size:13px}
+  .switch{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
+  .switch button{width:46px;height:26px;border-radius:999px;background:#c6ced8;position:relative;flex:none}
   .switch button::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s}
   .switch button.on{background:var(--ok)}
   .switch button.on::after{left:23px}
-  .qrgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
-  .qrcard{border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .reset-btn{color:var(--danger);font-size:13px;font-weight:600;padding:8px 12px;border:1px solid #f4c7c3;border-radius:10px;background:#fff}
+  .reset-btn:hover{background:var(--danger-soft)}
+  .bulk-btn{font-weight:700;color:var(--blue);background:var(--maize);border-radius:10px;padding:8px 14px;font-size:14px}
+  .qrgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px}
+  .qrcard{border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px}
   .qrimg svg{width:100%;height:auto;display:block}
+  .qrcard input{padding:8px 10px;font-size:15px;border-radius:10px}
   .qrmeta{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}
-  .modal{position:fixed;inset:0;background:rgba(20,22,30,.45);display:grid;place-items:center;padding:20px;z-index:10}
-  .modal .card{max-width:380px;width:100%}
-  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:20}
-  .muted{color:var(--muted);font-size:13px}
+  .qrmeta button{color:var(--danger);font-size:12px;font-weight:600}
+  .add-line{width:100%;margin-top:10px;padding:11px;border-radius:12px;border:1.5px dashed #c6ced8;color:var(--accent);font-weight:600}
+  .add-line:hover{background:var(--accent-soft);border-color:var(--accent)}
+  .pm-bg{position:fixed;inset:0;background:rgba(6,47,88,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:30}
+  .pm{background:var(--bg);width:100%;max-width:400px;border-radius:18px;padding:18px}
+  .pm h2{margin-bottom:6px}
+  .pm .btns{display:flex;justify-content:flex-end;align-items:center;gap:14px}
+  .pm .btns .link{color:var(--muted)}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--blue);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;z-index:40}
   #print{display:none}
-  @media (max-width:560px){ .hide-sm{display:none} .stat b{font-size:20px} }
+  @media (max-width:560px){ .hide-sm{display:none} .stat b{font-size:22px} }
   @media print{
-    body{background:#fff}
-    #app,#modal,.toast{display:none!important}
+    html,body{background:#fff}
+    header,#app,#modal,.toast{display:none!important}
     #print{display:block}
-    .sign{page-break-after:always;break-after:page;height:95vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:18px}
-    .sign .ev{font-size:16px;letter-spacing:.1em;text-transform:uppercase;color:#555}
-    .sign h1{font-size:54px;margin:0}
-    .sign .qrimg{width:62vw;max-width:440px}
-    .sign p{font-size:24px;margin:0}
+    .sign{page-break-after:always;break-after:page;height:95vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;color:#0C3662}
+    .sign img{width:60vw;max-width:460px;height:auto}
+    .sign .aw{font-size:18px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#2C61A1;margin-top:10px}
+    .sign h1{font-size:56px;margin:0}
+    .sign .qrimg{width:58vw;max-width:420px}
+    .sign p{font-size:24px;font-weight:600;margin:0;color:#0C3662}
   }
 </style>
 </head>
 <body>
-<div id="app"></div>
+<header><div class="hbar">
+  <div class="brand"><img src="assets/logo-white.png" alt="Business+Tech Innovation Jam"></div>
+  <div class="hright">Organizer</div>
+</div></header>
+<main id="app"></main>
 <div id="modal"></div>
 <div id="print"></div>
 <script src="audience-config.js"></script>
@@ -95,16 +129,14 @@ function toast(msg){
 
 /* ---------- PIN ---------- */
 function renderPin(error){
-  $app.innerHTML = `<div class="wrap narrow">
-    <div class="eyebrow">${esc(EVENT_NAME)}</div>
-    <h1>Organizer</h1>
-    <p class="sub">Enter the organizer PIN to see Audience Choice results.</p>
-    <form class="card" onsubmit="event.preventDefault(); login(this.pin.value)">
-      <input class="text pin" name="pin" inputmode="numeric" autocomplete="off" maxlength="8" aria-label="PIN" autofocus>
+  $app.innerHTML = `<section class="card lockbox">
+    <h1>Organizer</h1><p>Enter the organizer PIN to see Audience Choice results.</p>
+    <form onsubmit="event.preventDefault(); login(this.pin.value)">
+      <label for="pin">PIN</label>
+      <input id="pin" name="pin" inputmode="numeric" autocomplete="off" maxlength="8" autofocus>
       ${error?`<p class="err">${esc(error)}</p>`:''}
-      <button class="primary" style="margin-top:14px">Open results</button>
-    </form>
-  </div>`;
+      <button class="primary">Open results</button>
+    </form></section>`;
 }
 async function login(p){
   try{
@@ -112,7 +144,7 @@ async function login(p){
     pin = p; try{ sessionStorage.setItem('jamac-pin', p); }catch(e){}
     render(); startPolling();
   }catch(e){
-    renderPin(/pin/i.test(e.message) ? 'That PIN is not right.' : "Couldn't reach the Google Sheet. Check API_URL in config.js.");
+    renderPin(/pin/i.test(e.message) ? 'That PIN is not right.' : "Couldn't reach the Google Sheet. Check API_URL in audience-config.js.");
   }
 }
 
@@ -140,12 +172,10 @@ const fmt = v => v==null ? '–' : v.toFixed(2);
 function render(){
   const d = data, rows = d.rows, any = d.totalRatings > 0;
   const tie = any && rows.length > 2 && rows[2].ratings > 0 && Math.abs(rows[1].adjusted - rows[2].adjusted) < 1e-9;
-  $app.innerHTML = `<div class="wrap">
-    <div class="row">
-      <div><div class="eyebrow">${esc(EVENT_NAME)} · Organizer</div><h1>Audience Choice results</h1></div>
-      <button class="ghost" onclick="refresh(true)">Refresh</button>
-    </div>
-    <p class="sub">Top 2 teams are highlighted. Updates every 15 seconds · last update ${new Date(d.updated).toLocaleTimeString([], {hour:'numeric', minute:'2-digit', second:'2-digit'})}</p>
+  $app.innerHTML = `
+    <div class="ptop"><h1>Audience Choice results</h1>
+      <span class="live"><span class="dot"></span>Last updated: ${new Date(d.updated).toLocaleTimeString([], {hour:'numeric', minute:'2-digit', second:'2-digit'})}</span>
+      <span class="right"><button class="lock-btn" onclick="refresh(true)">Refresh</button><button class="lock-btn" onclick="logout()">Lock</button></span></div>
 
     <div class="stats">
       <div class="stat"><b>${d.totalRatings}</b><span>ratings</span></div>
@@ -153,67 +183,58 @@ function render(){
       <div class="stat"><b>${d.phones ? (d.totalRatings/d.phones).toFixed(1) : '0'}</b><span>teams rated per phone</span></div>
     </div>
 
-    <div class="card">
-      <div class="row">
-        <div class="switch"><button class="${d.open?'on':''}" onclick="admin({action:'setOpen', open:${!d.open}}, '${d.open?'Voting closed':'Voting opened'}')" aria-label="Voting open"></button>
-          <span>Voting is <b>${d.open?'open':'closed'}</b></span></div>
-        <button class="ghost danger" onclick="askClear()">Reset all votes</button>
+    <div class="pcard">
+      <div class="phead">
+        <div class="switch"><button class="${d.open?'on':''}" onclick="admin({action:'setOpen', open:${!d.open}}, '${d.open?'Voting closed':'Voting opened'}')" aria-label="Voting open"></button>Voting is ${d.open?'open':'closed'}</div>
+        <button class="reset-btn" onclick="askClear()">Reset all votes</button>
       </div>
-      <table>
-        <thead><tr><th>#</th><th>Team</th><th class="n hide-sm">Visits</th><th class="n">Ratings</th>
-          <th class="n hide-sm">Would pay</th><th class="n hide-sm">Demo</th><th class="n">Adjusted avg</th></tr></thead>
+      <div class="pscroll"><table class="ptable">
+        <thead><tr><th>#</th><th>Team</th><th class="c hide-sm">Visits</th><th class="c">Ratings</th>
+          <th class="c hide-sm">Would pay</th><th class="c hide-sm">Demo</th><th class="c">Adjusted avg</th></tr></thead>
         <tbody>${rows.map((r,i)=>`<tr class="${i<2&&any?'win':''}">
-          <td>${i+1}</td><td>${esc(r.name)}${i<2&&any?'<span class="badge">WINNER</span>':''}</td>
-          <td class="n hide-sm">${r.visits}</td><td class="n">${r.ratings}</td>
-          <td class="n hide-sm">${fmt(r.pay)}</td><td class="n hide-sm">${fmt(r.demo)}</td>
-          <td class="n"><b>${fmt(r.adjusted)}</b></td></tr>`).join('')}</tbody>
-      </table>
-      ${tie?`<div class="tie">2nd and 3rd place are tied. Decide together how to break the tie.</div>`:''}
-      <div class="foot">Answers score 1–3 (left to right). "Would pay" and "Demo" are each team's average for that question.
-        The adjusted average blends a team's ratings with ${d.k} "typical" ratings at the overall average (currently ${fmt(d.overall)}),
-        so teams with only a few ratings are pulled toward the middle and booth traffic doesn't decide the winner.
-        Visits counts phones that scanned the booth, whether or not they rated it.</div>
+          <td>${i+1}</td><td><span class="tlink">${esc(r.name)}</span></td>
+          <td class="c hide-sm">${r.visits}</td><td class="c">${r.ratings}</td>
+          <td class="c hide-sm">${fmt(r.pay)}</td><td class="c hide-sm">${fmt(r.demo)}</td>
+          <td class="c zv">${fmt(r.adjusted)}</td></tr>`).join('')}</tbody>
+      </table></div>
+      ${tie?`<p class="znote tie">2nd and 3rd place are tied. Decide together how to break the tie.</p>`:''}
     </div>
 
-    <div class="card">
-      <div class="row" style="margin-bottom:6px"><h2 style="margin:0">Teams and booth QR codes</h2>
-        <button class="ghost" onclick="printSigns()">Print QR signs</button></div>
-      <p class="sub" style="margin-bottom:14px">Each code is random, so nobody can open a team's page without being at its booth. Rename teams here once you have the finalist names; the QR codes stay the same.</p>
+    <div class="pcard">
+      <div class="phead"><h2>Teams and booth QR codes</h2><button class="bulk-btn" onclick="printSigns()">Print QR signs</button></div>
       <div class="qrgrid">${d.teams.map(t=>`<div class="qrcard">
         <div class="qrimg">${qrSvg(audienceUrl(t.code))}</div>
-        <input class="text" value="${esc(t.name)}" aria-label="Team name"
+        <input value="${esc(t.name)}" aria-label="Team name"
           onkeydown="if(event.key==='Enter')this.blur()"
           onchange="this.value.trim() && admin({action:'rename', code:'${t.code}', name:this.value}, 'Name saved')">
-        <div class="qrmeta"><span>#b-${t.code}</span><button class="link danger" onclick="askRemove('${t.code}')">Remove</button></div>
+        <div class="qrmeta"><span>#b-${t.code}</span><button onclick="askRemove('${t.code}')">Remove</button></div>
       </div>`).join('')}</div>
-      <button class="ghost" style="margin-top:14px" onclick="admin({action:'addTeam'}, 'Team added')">+ Add team</button>
-    </div>
-
-    <p class="muted" style="text-align:center"><button class="link" onclick="logout()">Log out</button></p>
-  </div>`;
+      <button class="add-line" onclick="admin({action:'addTeam'}, 'Team added')">+ Add team</button>
+    </div>`;
 }
 
 function printSigns(){
   document.getElementById('print').innerHTML = data.teams.map(t=>`<div class="sign">
-    <div class="ev">${esc(EVENT_NAME)} · Audience Choice</div>
+    <img src="assets/logo-blue.png" alt="Business+Tech Innovation Jam">
+    <div class="aw">Audience Choice</div>
     <h1>${esc(t.name)}</h1>
     <div class="qrimg">${qrSvg(audienceUrl(t.code))}</div>
     <p>Scan to rate this team</p></div>`).join('');
-  window.print();
+  const img = new Image(); img.onload = img.onerror = () => window.print(); img.src = 'assets/logo-blue.png';
 }
 
-function modal(html){ document.getElementById('modal').innerHTML = `<div class="modal"><div class="card">${html}</div></div>`; }
+function modal(html){ document.getElementById('modal').innerHTML = `<div class="pm-bg" onclick="if(event.target===this)closeModal()"><div class="pm">${html}</div></div>`; }
 function closeModal(){ document.getElementById('modal').innerHTML = ''; }
 function askRemove(code){
   const t = data.teams.find(t=>t.code===code);
   modal(`<h2>Remove ${esc(t.name)}?</h2><p class="sub">Its QR code will stop working and its votes won't count.</p>
-    <div class="row"><button class="ghost" onclick="closeModal()">Cancel</button>
-    <button class="ghost danger" onclick="closeModal(); admin({action:'removeTeam', code:'${code}'}, 'Team removed')">Remove team</button></div>`);
+    <div class="btns"><button class="link" onclick="closeModal()">Cancel</button>
+    <button class="reset-btn" onclick="closeModal(); admin({action:'removeTeam', code:'${code}'}, 'Team removed')">Remove team</button></div>`);
 }
 function askClear(){
   modal(`<h2>Reset all votes?</h2><p class="sub">This clears every rating and booth visit, and phones forget what they rated. The ratings are first copied to a backup tab in the Google Sheet. Team names and QR codes stay.</p>
-    <div class="row"><button class="ghost" onclick="closeModal()">Cancel</button>
-    <button class="ghost danger" onclick="closeModal(); admin({action:'clear'}, 'All votes reset')">Reset all votes</button></div>`);
+    <div class="btns"><button class="link" onclick="closeModal()">Cancel</button>
+    <button class="reset-btn" onclick="closeModal(); admin({action:'clear'}, 'All votes reset')">Reset all votes</button></div>`);
 }
 function logout(){ try{ sessionStorage.removeItem('jamac-pin'); }catch(e){} pin=null; clearInterval(timer); renderPin(); }
 
