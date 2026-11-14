@@ -108,14 +108,53 @@ const $app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let current = null;   // {code, name, q1, q2, state:'idle'|'saving'|'saved'|'error', msg}
 
+let closed = local.get('jamac-closed', false);   // last known state; the server has the final say
+let checkedAt = 0;                               // when the server last confirmed that state
+const fresh = () => Date.now() - checkedAt < 20000;
+const renderLoading = text => { $app.innerHTML = `<div class="card center"><div class="spinner"></div><p style="margin:0">${text}</p></div>`; };
+
 function route(){
   window.scrollTo(0,0);
   const m = location.hash.match(/^#b-([a-z0-9]+)$/);
   if(m) return openBooth(m[1]);
   current = null;
-  renderHome();
+  if(closed) renderClosed(); else if(fresh()) renderHome(); else renderLoading('Loading…');
+  checkStatus();
 }
 window.addEventListener('hashchange', route);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) checkStatus(); });
+
+// Applies what the server says about the event. Returns true if voting is open.
+function applyInfo(info){
+  if(info.round && local.get('jamac-round', null) !== info.round){   // votes were cleared since this phone last voted
+    booths = {}; saveBooths(); local.set('jamac-round', info.round);
+    if(current){ current.q1 = current.q2 = null; current.state = 'idle'; }
+  }
+  if(info.total) local.set('jamac-total', info.total);   // how many teams there are in all
+  closed = !info.open; local.set('jamac-closed', closed); checkedAt = Date.now();
+  return !!info.open;
+}
+
+// Asks the server whether voting is open, then shows the right screen.
+async function checkStatus(){
+  let info;
+  try{ info = await api({ action:'status' }); }
+  catch(e){
+    // Older script without 'status': ask about a booth this phone has visited instead.
+    const code = Object.keys(booths)[0];
+    const giveUp = () => { if(!current){ if(closed) renderClosed(); else renderHome(); } };   // offline: go by the last known state
+    if(!/unknown action/i.test(e.message) || !code) return giveUp();
+    try{ info = await api({ action:'team', code }); }catch(e2){ return giveUp(); }
+  }
+  const was = closed, open = applyInfo(info);
+  if(!open){ current = null; return renderClosed(); }
+  if(was || !current) { if(current) route(); else renderHome(); }
+}
+
+function renderClosed(){
+  $app.innerHTML = `<div class="card center"><h1>Voting is closed</h1>
+    <p style="margin:0">Thanks for taking part! Results will be announced shortly.</p></div>`;
+}
 
 function renderHome(){
   const codes = Object.keys(booths);
@@ -143,23 +182,18 @@ function renderMessage(title, body, retry){
 async function openBooth(code){
   const known = booths[code];
   current = { code, name: known?.name || '', q1: known?.q1 || null, q2: known?.q2 || null, state: known?.saved ? 'saved' : 'idle' };
-  if(known) renderTeam();
-  else $app.innerHTML = `<div class="card center"><div class="spinner"></div><p style="margin:0">Loading team…</p></div>`;
+  if(known && !closed && fresh()) renderTeam();
+  else renderLoading('Loading team…');
   let info;
   try{ info = await api({ action:'team', code }); }
   catch(e){
     if(current?.code !== code) return;
     if(/not found/i.test(e.message)) return renderMessage("That code didn't work", "Try scanning the QR code on the team's table again.");
-    if(!known) return renderMessage("Couldn't connect", "Check your signal or Wi-Fi and try again.", true);
-    return;
+    if(!known || closed) return renderMessage("Couldn't connect", "Check your signal or Wi-Fi and try again.", true);
+    return renderTeam();
   }
   if(current?.code !== code) return;
-  if(info.round && local.get('jamac-round', null) !== info.round){   // votes were cleared since this phone last voted
-    booths = {}; saveBooths(); local.set('jamac-round', info.round);
-    current.q1 = current.q2 = null; current.state = 'idle';
-  }
-  if(info.total) local.set('jamac-total', info.total);   // how many teams there are in all
-  if(!info.open) return renderMessage('Voting is closed', 'Thanks for taking part! Results will be announced shortly.');
+  if(!applyInfo(info)){ current = null; return renderClosed(); }
   current.name = info.team.name;
   if(!booths[code]){
     booths[code] = { name: info.team.name };
@@ -202,9 +236,9 @@ async function send(){
     c.state = 'saved'; renderTeam();
   }catch(e){
     if(current !== c) return;
+    if(/closed/i.test(e.message)){ closed = true; local.set('jamac-closed', true); current = null; return renderClosed(); }
     c.state = 'error';
-    c.msg = /closed/i.test(e.message) ? 'Voting has closed, so this rating could not be saved.'
-          : "Didn't save. Check your signal and try again.";
+    c.msg = "Didn't save. Check your signal and try again.";
     renderTeam();
   }
 }

@@ -27,6 +27,7 @@ function handle_(p) {
     ensureSetup_();
     switch (p.action) {
       // audience
+      case 'status':    return out_(status_());
       case 'team':      return out_(getTeam_(p.code));
       case 'scan':      return out_(recordScan_(p));
       case 'rate':      return out_(rate_(p));
@@ -142,6 +143,11 @@ function findTeam_(code) {
 }
 
 /* ---------------- audience actions ---------------- */
+
+// Lets a phone check whether voting is open without naming a team.
+function status_() {
+  return { open: isOpen_(), round: String(getSetting_('Round') || '1'), total: teams_().length };
+}
 
 function getTeam_(code) {
   const t = findTeam_(code);
