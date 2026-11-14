@@ -56,7 +56,6 @@
   .ptable th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
   .ptable td{padding:10px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
   .ptable .c{text-align:center;font-variant-numeric:tabular-nums}
-  .ptable tr.win td{background:var(--maize-soft)}
   .tlink{font-weight:600}
   .zv{font-weight:700}
   .znote{font-size:12px;color:var(--muted);margin:10px 0 0}
@@ -191,7 +190,7 @@ function render(){
       <div class="pscroll"><table class="ptable">
         <thead><tr><th>#</th><th>Team</th><th class="c hide-sm">Visits</th><th class="c">Ratings</th>
           <th class="c hide-sm">Would pay</th><th class="c hide-sm">Demo</th><th class="c">Adjusted avg</th></tr></thead>
-        <tbody>${rows.map((r,i)=>`<tr class="${i<2&&any?'win':''}">
+        <tbody>${rows.map((r,i)=>`<tr>
           <td>${i+1}</td><td><span class="tlink">${esc(r.name)}</span></td>
           <td class="c hide-sm">${r.visits}</td><td class="c">${r.ratings}</td>
           <td class="c hide-sm">${fmt(r.pay)}</td><td class="c hide-sm">${fmt(r.demo)}</td>
