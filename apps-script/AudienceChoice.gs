@@ -242,10 +242,26 @@ function removeTeam_(code) {
   });
 }
 
+// Copies the Ratings tab to a new tab named "Ratings backup <date time>" (only if it has ratings).
+function backupRatings_() {
+  const src = tab_('Ratings', []);
+  const values = src.getDataRange().getValues();
+  const hasRatings = values.slice(1).some(function (r) { return r[1] !== '' && r[1] != null; });
+  if (!hasRatings) return null;
+  const base = 'Ratings backup ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH.mm.ss');
+  let name = base, n = 2;
+  while (ss_().getSheetByName(name)) name = base + ' (' + (n++) + ')';
+  const copy = ss_().insertSheet(name);
+  copy.getRange(1, 1, values.length, values[0].length).setValues(values);
+  copy.setFrozenRows(1);
+  return name;
+}
+
 function clearVotes_() {
   // New round: phones used for testing forget their old ratings.
   setSetting_('Round', String(Number(getSetting_('Round') || 1) + 1));
   withLock_(function () {
+    backupRatings_();
     ['Ratings', 'Visits'].forEach(function (name) {
       const sh = tab_(name, []);
       const last = sh.getLastRow();
