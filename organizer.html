@@ -154,8 +154,11 @@ function render(){
     </div>
 
     <div class="card">
-      <div class="switch"><button class="${d.open?'on':''}" onclick="admin({action:'setOpen', open:${!d.open}}, '${d.open?'Voting closed':'Voting opened'}')" aria-label="Voting open"></button>
-        <span>Voting is <b>${d.open?'open':'closed'}</b></span></div>
+      <div class="row">
+        <div class="switch"><button class="${d.open?'on':''}" onclick="admin({action:'setOpen', open:${!d.open}}, '${d.open?'Voting closed':'Voting opened'}')" aria-label="Voting open"></button>
+          <span>Voting is <b>${d.open?'open':'closed'}</b></span></div>
+        <button class="ghost danger" onclick="askClear()">Reset all votes</button>
+      </div>
       <table>
         <thead><tr><th>#</th><th>Team</th><th class="n hide-sm">Visits</th><th class="n">Ratings</th>
           <th class="n hide-sm">Would pay</th><th class="n hide-sm">Demo</th><th class="n">Adjusted avg</th></tr></thead>
@@ -186,14 +189,7 @@ function render(){
       <button class="ghost" style="margin-top:14px" onclick="admin({action:'addTeam'}, 'Team added')">+ Add team</button>
     </div>
 
-    <div class="card">
-      <h2>Before the event</h2>
-      <p class="sub" style="margin-bottom:12px">After testing, clear the test votes so the finale starts from zero. Team names and QR codes stay.</p>
-      <div class="row" style="justify-content:flex-start">
-        <button class="ghost danger" onclick="askClear()">Clear all votes</button>
-        <button class="link" onclick="logout()">Log out</button>
-      </div>
-    </div>
+    <p class="muted" style="text-align:center"><button class="link" onclick="logout()">Log out</button></p>
   </div>`;
 }
 
@@ -215,9 +211,9 @@ function askRemove(code){
     <button class="ghost danger" onclick="closeModal(); admin({action:'removeTeam', code:'${code}'}, 'Team removed')">Remove team</button></div>`);
 }
 function askClear(){
-  modal(`<h2>Clear all votes?</h2><p class="sub">This deletes every rating and booth visit in the Google Sheet. It can't be undone.</p>
+  modal(`<h2>Reset all votes?</h2><p class="sub">This deletes every rating and booth visit in the Google Sheet, and phones forget what they rated. Team names and QR codes stay. It can't be undone.</p>
     <div class="row"><button class="ghost" onclick="closeModal()">Cancel</button>
-    <button class="ghost danger" onclick="closeModal(); admin({action:'clear'}, 'Votes cleared')">Clear all votes</button></div>`);
+    <button class="ghost danger" onclick="closeModal(); admin({action:'clear'}, 'All votes reset')">Reset all votes</button></div>`);
 }
 function logout(){ try{ sessionStorage.removeItem('jamac-pin'); }catch(e){} pin=null; clearInterval(timer); renderPin(); }
 
