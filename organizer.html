@@ -211,7 +211,7 @@ function askRemove(code){
     <button class="ghost danger" onclick="closeModal(); admin({action:'removeTeam', code:'${code}'}, 'Team removed')">Remove team</button></div>`);
 }
 function askClear(){
-  modal(`<h2>Reset all votes?</h2><p class="sub">This deletes every rating and booth visit in the Google Sheet, and phones forget what they rated. Team names and QR codes stay. It can't be undone.</p>
+  modal(`<h2>Reset all votes?</h2><p class="sub">This clears every rating and booth visit, and phones forget what they rated. The ratings are first copied to a backup tab in the Google Sheet. Team names and QR codes stay.</p>
     <div class="row"><button class="ghost" onclick="closeModal()">Cancel</button>
     <button class="ghost danger" onclick="closeModal(); admin({action:'clear'}, 'All votes reset')">Reset all votes</button></div>`);
 }

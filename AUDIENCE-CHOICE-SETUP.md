@@ -41,7 +41,7 @@ You don't need to create any tabs. The Sheet sets up **Teams, Ratings, Visits** 
 2. Scan 2 or 3 of the QR codes on screen with a few phones, using a mix of iPhone and Android. Rate some teams, and change one answer.
 3. Click **Refresh** on the organizer page and check that the ratings show up. They also appear in the Sheet's Ratings tab.
 4. Turn voting off, scan a code, and check that the phone says voting is closed. Then turn voting back on.
-5. Click **Reset all votes**. Phones used for testing forget their old ratings the next time they scan.
+5. Click **Reset all votes**. Phones used for testing forget their old ratings the next time they scan. The ratings are copied to a tab named "Ratings backup (date and time)" before they're cleared; booth visits aren't backed up. Delete backup tabs you don't need.
 
 ## 4. Before the event
 
