@@ -145,7 +145,7 @@ function findTeam_(code) {
 
 function getTeam_(code) {
   const t = findTeam_(code);
-  return { team: t, open: isOpen_(), round: String(getSetting_('Round') || '1') };
+  return { team: t, open: isOpen_(), round: String(getSetting_('Round') || '1'), total: teams_().length };
 }
 
 function recordScan_(p) {
