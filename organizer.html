@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Audience Choice: Organizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#f5f4f0;--card:#fff;--ink:#1b1d24;--muted:#6b6f7b;--line:#e3e1db;--accent:#2b3fd6;--accent-soft:#e8ebff;
+        --gold:#b7791f;--gold-soft:#fdf3e1;--ok:#1f7a4d;--warn:#a33a1f;--warn-soft:#fbe9e4}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"DM Sans",system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+  button{font:inherit;cursor:pointer;color:inherit}
+  .wrap{max-width:900px;margin:0 auto;padding:24px 16px 60px}
+  .narrow{max-width:360px}
+  .eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:6px 0 2px}
+  h1{font-size:26px;line-height:1.15;margin:0 0 6px;letter-spacing:-.01em}
+  h2{font-size:17px;margin:0 0 10px}
+  p.sub{color:var(--muted);margin:0 0 18px;font-size:15px;line-height:1.45}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .stat b{display:block;font-size:24px}
+  .stat span{font-size:12px;color:var(--muted)}
+  .ghost{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 13px;font-size:14px}
+  .ghost.danger{color:var(--warn)}
+  .primary{border:0;border-radius:12px;padding:13px 16px;background:var(--accent);color:#fff;font-weight:700;font-size:16px;width:100%}
+  .link{background:none;border:0;color:var(--accent);padding:0;font-size:14px}
+  .link.danger{color:var(--warn);font-size:12px}
+  input.text{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;font-size:15px;width:100%}
+  .pin{font-size:28px;letter-spacing:.4em;text-align:center}
+  .err{color:var(--warn);font-size:14px;margin:8px 0 0}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:12px}
+  th{text-align:left;font-weight:500;color:var(--muted);font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line)}
+  td{padding:11px 6px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+  th.n,td.n{text-align:right}
+  tr.win td{background:var(--gold-soft)}
+  .badge{display:inline-block;font-size:11px;font-weight:700;color:var(--gold);border:1px solid #ecc98a;border-radius:999px;padding:1px 8px;margin-left:6px;background:#fff}
+  .tie{color:var(--warn);font-size:14px;margin-top:12px;background:var(--warn-soft);padding:10px 12px;border-radius:10px}
+  .foot{font-size:13px;color:var(--muted);line-height:1.5;margin-top:12px}
+  .switch{display:flex;align-items:center;gap:10px;font-size:15px}
+  .switch button{width:46px;height:26px;border-radius:999px;border:0;background:#c5c8d4;position:relative;flex:none}
+  .switch button::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s}
+  .switch button.on{background:var(--ok)}
+  .switch button.on::after{left:23px}
+  .qrgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+  .qrcard{border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .qrimg svg{width:100%;height:auto;display:block}
+  .qrmeta{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}
+  .modal{position:fixed;inset:0;background:rgba(20,22,30,.45);display:grid;place-items:center;padding:20px;z-index:10}
+  .modal .card{max-width:380px;width:100%}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:20}
+  .muted{color:var(--muted);font-size:13px}
+  #print{display:none}
+  @media (max-width:560px){ .hide-sm{display:none} .stat b{font-size:20px} }
+  @media print{
+    body{background:#fff}
+    #app,#modal,.toast{display:none!important}
+    #print{display:block}
+    .sign{page-break-after:always;break-after:page;height:95vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:18px}
+    .sign .ev{font-size:16px;letter-spacing:.1em;text-transform:uppercase;color:#555}
+    .sign h1{font-size:54px;margin:0}
+    .sign .qrimg{width:62vw;max-width:440px}
+    .sign p{font-size:24px;margin:0}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal"></div>
+<div id="print"></div>
+<script src="audience-config.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script>
+const $app = document.getElementById('app');
+const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let pin = null; try{ pin = sessionStorage.getItem('jamac-pin'); }catch(e){}
+let data = null, timer = null, busy = false;
+
+async function api(params, post){
+  let r;
+  if(post) r = await fetch(API_URL, { method:'POST', body: JSON.stringify(params) });
+  else r = await fetch(API_URL + '?' + new URLSearchParams(params));
+  const j = await r.json();
+  if(j.ok === false) throw new Error(j.error || 'Something went wrong');
+  return j;
+}
+function toast(msg){
+  const t = document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(), 2600);
+}
+
+/* ---------- PIN ---------- */
+function renderPin(error){
+  $app.innerHTML = `<div class="wrap narrow">
+    <div class="eyebrow">${esc(EVENT_NAME)}</div>
+    <h1>Organizer</h1>
+    <p class="sub">Enter the organizer PIN to see Audience Choice results.</p>
+    <form class="card" onsubmit="event.preventDefault(); login(this.pin.value)">
+      <input class="text pin" name="pin" inputmode="numeric" autocomplete="off" maxlength="8" aria-label="PIN" autofocus>
+      ${error?`<p class="err">${esc(error)}</p>`:''}
+      <button class="primary" style="margin-top:14px">Open results</button>
+    </form>
+  </div>`;
+}
+async function login(p){
+  try{
+    data = await api({ action:'results', pin:p });
+    pin = p; try{ sessionStorage.setItem('jamac-pin', p); }catch(e){}
+    render(); startPolling();
+  }catch(e){
+    renderPin(/pin/i.test(e.message) ? 'That PIN is not right.' : "Couldn't reach the Google Sheet. Check API_URL in config.js.");
+  }
+}
+
+/* ---------- results ---------- */
+function startPolling(){ clearInterval(timer); timer = setInterval(refresh, 15000); }
+async function refresh(manual){
+  if(busy || document.querySelector('input:focus')) return;
+  try{ data = await api({ action:'results', pin }); render(); if(manual) toast('Updated'); }
+  catch(e){ if(/pin/i.test(e.message)){ clearInterval(timer); renderPin(); } else if(manual) toast("Couldn't refresh"); }
+}
+async function admin(params, msg){
+  busy = true;
+  try{ data = await api({ ...params, pin }, true); render(); if(msg) toast(msg); }
+  catch(e){ toast(e.message); }
+  finally{ busy = false; }
+}
+
+function qrSvg(text){
+  try{ const q=qrcode(0,'M'); q.addData(text); q.make(); return q.createSvgTag({cellSize:4, margin:2, scalable:true}); }
+  catch(e){ return ''; }
+}
+const audienceUrl = code => new URL('audience.html', location.href).href.split('#')[0] + '#b-' + code;
+const fmt = v => v==null ? '–' : v.toFixed(2);
+
+function render(){
+  const d = data, rows = d.rows, any = d.totalRatings > 0;
+  const tie = any && rows.length > 2 && rows[2].ratings > 0 && Math.abs(rows[1].adjusted - rows[2].adjusted) < 1e-9;
+  $app.innerHTML = `<div class="wrap">
+    <div class="row">
+      <div><div class="eyebrow">${esc(EVENT_NAME)} · Organizer</div><h1>Audience Choice results</h1></div>
+      <button class="ghost" onclick="refresh(true)">Refresh</button>
+    </div>
+    <p class="sub">Top 2 teams are highlighted. Updates every 15 seconds · last update ${new Date(d.updated).toLocaleTimeString([], {hour:'numeric', minute:'2-digit', second:'2-digit'})}</p>
+
+    <div class="stats">
+      <div class="stat"><b>${d.totalRatings}</b><span>ratings</span></div>
+      <div class="stat"><b>${d.phones}</b><span>phones voted</span></div>
+      <div class="stat"><b>${d.phones ? (d.totalRatings/d.phones).toFixed(1) : '0'}</b><span>teams rated per phone</span></div>
+    </div>
+
+    <div class="card">
+      <div class="switch"><button class="${d.open?'on':''}" onclick="admin({action:'setOpen', open:${!d.open}}, '${d.open?'Voting closed':'Voting opened'}')" aria-label="Voting open"></button>
+        <span>Voting is <b>${d.open?'open':'closed'}</b></span></div>
+      <table>
+        <thead><tr><th>#</th><th>Team</th><th class="n hide-sm">Visits</th><th class="n">Ratings</th>
+          <th class="n hide-sm">Would pay</th><th class="n hide-sm">Demo</th><th class="n">Adjusted avg</th></tr></thead>
+        <tbody>${rows.map((r,i)=>`<tr class="${i<2&&any?'win':''}">
+          <td>${i+1}</td><td>${esc(r.name)}${i<2&&any?'<span class="badge">WINNER</span>':''}</td>
+          <td class="n hide-sm">${r.visits}</td><td class="n">${r.ratings}</td>
+          <td class="n hide-sm">${fmt(r.pay)}</td><td class="n hide-sm">${fmt(r.demo)}</td>
+          <td class="n"><b>${fmt(r.adjusted)}</b></td></tr>`).join('')}</tbody>
+      </table>
+      ${tie?`<div class="tie">2nd and 3rd place are tied. Decide together how to break the tie.</div>`:''}
+      <div class="foot">Answers score 1–3 (left to right). "Would pay" and "Demo" are each team's average for that question.
+        The adjusted average blends a team's ratings with ${d.k} "typical" ratings at the overall average (currently ${fmt(d.overall)}),
+        so teams with only a few ratings are pulled toward the middle and booth traffic doesn't decide the winner.
+        Visits counts phones that scanned the booth, whether or not they rated it.</div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:6px"><h2 style="margin:0">Teams and booth QR codes</h2>
+        <button class="ghost" onclick="printSigns()">Print QR signs</button></div>
+      <p class="sub" style="margin-bottom:14px">Each code is random, so nobody can open a team's page without being at its booth. Rename teams here once you have the finalist names; the QR codes stay the same.</p>
+      <div class="qrgrid">${d.teams.map(t=>`<div class="qrcard">
+        <div class="qrimg">${qrSvg(audienceUrl(t.code))}</div>
+        <input class="text" value="${esc(t.name)}" aria-label="Team name"
+          onkeydown="if(event.key==='Enter')this.blur()"
+          onchange="this.value.trim() && admin({action:'rename', code:'${t.code}', name:this.value}, 'Name saved')">
+        <div class="qrmeta"><span>#b-${t.code}</span><button class="link danger" onclick="askRemove('${t.code}')">Remove</button></div>
+      </div>`).join('')}</div>
+      <button class="ghost" style="margin-top:14px" onclick="admin({action:'addTeam'}, 'Team added')">+ Add team</button>
+    </div>
+
+    <div class="card">
+      <h2>Before the event</h2>
+      <p class="sub" style="margin-bottom:12px">After testing, clear the test votes so the finale starts from zero. Team names and QR codes stay.</p>
+      <div class="row" style="justify-content:flex-start">
+        <button class="ghost danger" onclick="askClear()">Clear all votes</button>
+        <button class="link" onclick="logout()">Log out</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function printSigns(){
+  document.getElementById('print').innerHTML = data.teams.map(t=>`<div class="sign">
+    <div class="ev">${esc(EVENT_NAME)} · Audience Choice</div>
+    <h1>${esc(t.name)}</h1>
+    <div class="qrimg">${qrSvg(audienceUrl(t.code))}</div>
+    <p>Scan to rate this team</p></div>`).join('');
+  window.print();
+}
+
+function modal(html){ document.getElementById('modal').innerHTML = `<div class="modal"><div class="card">${html}</div></div>`; }
+function closeModal(){ document.getElementById('modal').innerHTML = ''; }
+function askRemove(code){
+  const t = data.teams.find(t=>t.code===code);
+  modal(`<h2>Remove ${esc(t.name)}?</h2><p class="sub">Its QR code will stop working and its votes won't count.</p>
+    <div class="row"><button class="ghost" onclick="closeModal()">Cancel</button>
+    <button class="ghost danger" onclick="closeModal(); admin({action:'removeTeam', code:'${code}'}, 'Team removed')">Remove team</button></div>`);
+}
+function askClear(){
+  modal(`<h2>Clear all votes?</h2><p class="sub">This deletes every rating and booth visit in the Google Sheet. It can't be undone.</p>
+    <div class="row"><button class="ghost" onclick="closeModal()">Cancel</button>
+    <button class="ghost danger" onclick="closeModal(); admin({action:'clear'}, 'Votes cleared')">Clear all votes</button></div>`);
+}
+function logout(){ try{ sessionStorage.removeItem('jamac-pin'); }catch(e){} pin=null; clearInterval(timer); renderPin(); }
+
+if(pin) login(pin); else renderPin();
+</script>
+</body>
+</html>

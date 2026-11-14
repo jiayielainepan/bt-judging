@@ -23,3 +23,7 @@ deploy it as a Web app (Execute as: Me, Who has access: Anyone), and put the Web
 12. Starting setup: Category 1-3 plus Category 4 as the Impact Prize; teams can be added in bulk (up to 75).
 13. Sheet columns: Last updated, Judge, Team, Track, Gut check, Total, Max total, Impact Prize total, Impact Prize max, then 10 score columns titled with the category names from Admin (rubric first, then "Impact Prize: [name]"; unused ones say "(unused)"), then Keep doing, Work on, What worked, What to improve, Team ID, Device ID, Scores JSON. Up to 10 categories in all. A Sheet in the older layout is moved over automatically the first time the new script runs; the old tab is kept as "Scores (old layout) [date]".
 14. Criteria: for the JAM Challenge Round the criteria are fixed in index.html (FIXED_CRITERIA, matched by category position); set ADMIN_CRITERIA = true to edit them in Admin instead (one per line). Judges open them with a small "Criteria ▾" button on the score screen. Text from "e.g." onward shows in smaller grey type. Comment boxes have no length limit and grow as you type.
+
+## Audience Choice
+
+A separate tool for the JAM Finale audience vote: `audience.html` (reached by scanning a booth's QR code) and `organizer.html` (PIN-protected results, team names, voting switch, printable QR signs). It uses its own Google Sheet and script (`apps-script/AudienceChoice.gs`). Setup steps are in `AUDIENCE-CHOICE-SETUP.md`.
