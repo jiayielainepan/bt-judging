@@ -41,13 +41,13 @@ You don't need to create any tabs. The Sheet sets up **Teams, Ratings, Visits** 
 2. Scan 2 or 3 of the QR codes on screen with a few phones, using a mix of iPhone and Android. Rate some teams, and change one answer.
 3. Click **Refresh** on the organizer page and check that the ratings show up. They also appear in the Sheet's Ratings tab.
 4. Turn voting off, scan a code, and check that the phone says voting is closed. Then turn voting back on.
-5. Click **Clear all votes**. Phones used for testing forget their old ratings the next time they scan.
+5. Click **Reset all votes**. Phones used for testing forget their old ratings the next time they scan.
 
 ## 4. Before the event
 
 - **Rename the teams** on the organizer page once you have the finalists. The QR codes don't change. Remove any extra teams; with 10 placeholders you'll probably have extras.
 - Click **Print QR signs** to print one page per team: team name, QR code, "Scan to rate this team."
-- **Clear all votes** one last time after testing.
+- Click **Reset all votes** one last time after testing.
 
 ## During the event
 
